@@ -31,9 +31,7 @@ using QuantLib::BondFunctions;
 %}
 
 class BondFunctions {
-    #if defined(SWIGPYTHON) || defined (SWIGRUBY)
-    %rename(bondYield) yield;
-    #elif defined(SWIGMZSCHEME) || defined(SWIGGUILE)
+    #if defined(SWIGMZSCHEME) || defined(SWIGGUILE)
     %rename("start-date")                 startDate;
     %rename("maturity-date")              maturityDate;
     %rename("is-tradeable")               isTradable;
