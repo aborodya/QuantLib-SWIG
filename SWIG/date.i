@@ -285,7 +285,7 @@ using QuantLib::DateParser;
 
 #if defined(SWIGPYTHON)
 %pythoncode %{
-import datetime
+import datetime as _datetime
 %}
 #endif
 
@@ -565,6 +565,9 @@ class Date {
         bool __nonzero__() {
             return (*self != Date());
         }
+        bool __bool__() {
+            return (*self != Date());
+        }
         int __hash__() {
             return self->serialNumber();
         }
@@ -590,7 +593,7 @@ class Date {
     #if defined(SWIGPYTHON)
     %pythoncode %{
     def to_date(self):
-        return datetime.date(self.year(), self.month(), self.dayOfMonth())
+        return _datetime.date(self.year(), self.month(), self.dayOfMonth())
 
     @staticmethod
     def from_date(date):
