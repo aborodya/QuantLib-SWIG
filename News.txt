@@ -1,54 +1,46 @@
 
-Changes for QuantLib-SWIG 1.9
-=============================
+Main changes for QuantLib-SWIG 1.14
+===================================
 
-The most notable changes are included below.
-A detailed list of changes is available in ChangeLog.txt and at
-<https://github.com/lballabio/QuantLib-SWIG/milestone/2?closed=1>.
+More details on the changes are available in ChangeLog.txt and at
+<https://github.com/lballabio/QuantLib-SWIG/milestone/7?closed=1>.
 
-- dropped support for Visual C++ 8 (2005), which as of April 2016 is
-  unsupported by Microsoft.
+- Dropped support for Visual Studio 2008.
 
-- removed harmful redefinition of `SWIGSTDCALL` preventing debugging
-  of C# module (thanks to Fabrice Lecuyer to the heads-up).
+- Exported the Calendar::holidayList method (thanks to Piotr Siejda).
 
-- if present in the environment, `LDFLAGS` is now passed to the
-  linker when building the Python wrappers (thanks to Gouthaman
-  Balaraman).
+- Exported Thailand calendar (thanks to Matthias Groncki).
 
-- if present in the environment, `CXXFLAGS` and `LDFLAGS` are now
-  passed to the linker when building the Java wrappers (thanks to
-  Martin Ross).
+- Exported the InterpolatedSurvivalProbabilityCurve class (thanks to
+  Matthias Lungwitz).
 
-- added a few inspectors to the `CapFloor` class (thanks to Gouthaman
-  Balaraman).
+- Exported the SmileSection base class and a few derived classes
+  (thanks to Matthias Lungwitz).
 
-- exported the `ASX`, `Futures` and `Pillar` structs, used in a few
-  newly-exported rate-helper constructors (thanks to Fabrice Lecuyer).
+- Exported Bibor and THBFIX indices (thanks to Matthias Groncki).
 
-- allow the use of normal volatilities for cap, floors and swaptions
-  (thanks to Gouthaman Balaraman, Peter Caspers and Wojciech
-  Slusarski).
+- Exported the force_overwrite parameter from the Index::addFixing
+  method (thanks to Wojciech Slusarski).
 
-- exported the `LocalVolSurface` class (thanks to Gouthaman Balaraman).
+- Exported CMS-spread coupons and leg (thanks to Matthias Lungwitz).
 
-- exported the `AnalyticPTDHestonEngine` class (thanks to Gouthaman
-  Balaraman).
+- Added protection start date argument to CreditDefaultSwap
+  constructor (thanks to GitHub user pschaefers).
 
-- exported the `BlackCallableFixedRateBondEngine` class (thanks to
-  Gouthaman Balaraman).
+- Exported the MakeVanillaSwap class (thanks to Matthias Groncki).
 
-- exported monotonic-cubic zero curve (thanks to Andres Hernandez).
+- Exported the IsdaCdsEngine class and added Python example (thanks to
+  Weston Steimel and GitHub user aliallday).
 
-- exported `ShortRateModel` inspectors (thanks to Andres Hernandez).
+- Exported the COSHestonEngine class (thanks to Klaus Spanderen).
 
-- added overloaded constructor for `FixedRateBond` taking a vector of
-  `InterestRate` instances (thanks to Gouthaman Balaraman).
-  Unfortunately, this prevents kwargs support in Python.
+- Exported the SwingOption class and related classes and added Python
+  and Scala examples (thanks to Klaus Spanderen).
 
-- swap indexes can now be built with an exogenous discount curve
-  (thanks to Peter Caspers).
+- Added Python example for Gaussian 1D model (thanks to Angus Lee).
 
-- exported BBSW, BKBM, NZOCR and Aonia indexes (thanks to Fabrice Lecuyer).
-
-
+- Added option to use the AutoCloseable interface in the Java wrappers
+  instead of finalizers.  Use the `--enable-java-autocloseable`
+  configure switch to enable the interface.  The separate switch
+  `--disable-java-finalizer` disables finalizers entirely, and should
+  be used with caution.

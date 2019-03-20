@@ -376,6 +376,36 @@ class HullWhiteProcessPtr : public StochasticProcess1DPtr {
 };
 
 %{
+using QuantLib::HullWhiteForwardProcess;
+typedef boost::shared_ptr<StochasticProcess> HullWhiteForwardProcessPtr;
+%}
+
+%rename(HullWhiteForwardProcess) HullWhiteForwardProcessPtr;
+class HullWhiteForwardProcessPtr : public StochasticProcess1DPtr {
+  public:
+    %extend {
+        HullWhiteForwardProcessPtr(const Handle<YieldTermStructure>& riskFreeTS,
+                                 Real a,
+                                 Real sigma){
+            return new HullWhiteForwardProcessPtr(
+                new HullWhiteForwardProcess(riskFreeTS, a, sigma));
+        }
+        Real alpha(Time t) const{
+            return boost::dynamic_pointer_cast<HullWhiteForwardProcess>(*self)      ->alpha(t);
+        }
+        Real M_T(Real s, Real t, Real T) const{
+            return boost::dynamic_pointer_cast<HullWhiteForwardProcess>(*self)      ->M_T(s, t, T);
+        }
+        Real B(Time t, Time T) const{
+            return boost::dynamic_pointer_cast<HullWhiteForwardProcess>(*self)      ->B(t, T);
+        }
+        void setForwardMeasureTime(Time t) {
+            boost::dynamic_pointer_cast<HullWhiteForwardProcess>(*self)             ->setForwardMeasureTime(t);
+        }
+    }
+};
+
+%{
 using QuantLib::GsrProcess;
 typedef boost::shared_ptr<StochasticProcess> GsrProcessPtr;
 %}
@@ -412,6 +442,97 @@ class GsrProcessPtr : public StochasticProcess1DPtr {
         return boost::dynamic_pointer_cast<GsrProcess>(proc);
     }
 %}
+
+
+%{
+using QuantLib::KlugeExtOUProcess;
+using QuantLib::ExtendedOrnsteinUhlenbeckProcess;
+using QuantLib::ExtOUWithJumpsProcess;
+typedef boost::shared_ptr<StochasticProcess> KlugeExtOUProcessPtr;
+typedef boost::shared_ptr<StochasticProcess> ExtendedOrnsteinUhlenbeckProcessPtr;
+typedef boost::shared_ptr<StochasticProcess> ExtOUWithJumpsProcessPtr;
+%}
+
+%rename(ExtendedOrnsteinUhlenbeckProcess) ExtendedOrnsteinUhlenbeckProcessPtr;
+class ExtendedOrnsteinUhlenbeckProcessPtr : public StochasticProcess1DPtr {
+    public:
+    %extend {
+        #if defined(SWIGPYTHON)    
+        ExtendedOrnsteinUhlenbeckProcessPtr(
+            Real speed, Volatility sigma, Real x0, 
+            PyObject* function, 
+            Real intEps = 1e-4) {
+            
+            const UnaryFunction f(function);
+            return new ExtendedOrnsteinUhlenbeckProcessPtr(
+            	new ExtendedOrnsteinUhlenbeckProcess(
+            	    speed, sigma, x0, f, 
+            	    ExtendedOrnsteinUhlenbeckProcess::MidPoint, intEps));
+        }
+        #elif defined(SWIGJAVA) || defined(SWIGCSHARP)
+        ExtendedOrnsteinUhlenbeckProcessPtr(
+            Real speed, Volatility sigma, Real x0, 
+            UnaryFunctionDelegate* function,
+            Real intEps = 1e-4) {
+            
+            const UnaryFunction f(function);
+            return new ExtendedOrnsteinUhlenbeckProcessPtr(
+            	new ExtendedOrnsteinUhlenbeckProcess(
+            	    speed, sigma, x0, f, 
+            	    ExtendedOrnsteinUhlenbeckProcess::MidPoint, intEps));
+        }
+		#endif        
+    }
+};
+
+%rename(ExtOUWithJumpsProcess) ExtOUWithJumpsProcessPtr;
+class ExtOUWithJumpsProcessPtr : public StochasticProcess1DPtr {
+    public:
+    %extend {
+        ExtOUWithJumpsProcessPtr(
+            const ExtendedOrnsteinUhlenbeckProcessPtr& process,
+            Real Y0, Real beta, Real jumpIntensity, Real eta) {
+            
+	        const boost::shared_ptr<ExtendedOrnsteinUhlenbeckProcess> ouProcess =
+	            boost::dynamic_pointer_cast<ExtendedOrnsteinUhlenbeckProcess>(
+	                process);
+            
+            QL_REQUIRE(ouProcess, "Extended Ornstein-Uhlenbeck process required");
+                        
+			return new ExtOUWithJumpsProcessPtr(
+				new ExtOUWithJumpsProcess(
+					ouProcess, Y0, beta, jumpIntensity, eta));
+        }
+    }
+};
+
+%rename(KlugeExtOUProcess) KlugeExtOUProcessPtr;
+class KlugeExtOUProcessPtr : public StochasticProcess1DPtr {
+    public:
+    %extend {
+        KlugeExtOUProcessPtr(
+            Real rho,
+            const ExtOUWithJumpsProcessPtr& kluge,
+            const ExtendedOrnsteinUhlenbeckProcessPtr& extOU) {
+            
+	        const boost::shared_ptr<ExtendedOrnsteinUhlenbeckProcess> ouProcess =
+	            boost::dynamic_pointer_cast<ExtendedOrnsteinUhlenbeckProcess>(
+	                extOU);
+            
+            QL_REQUIRE(ouProcess, "Extended Ornstein-Uhlenbeck process required");
+            
+            const boost::shared_ptr<ExtOUWithJumpsProcess> jProcess =
+	            boost::dynamic_pointer_cast<ExtOUWithJumpsProcess>(
+	                kluge);
+	                
+            QL_REQUIRE(jProcess, 
+            	"Extended Ornstein-Uhlenbeck with jumps process required");
+	                            	
+            return new KlugeExtOUProcessPtr(new KlugeExtOUProcess(
+            	rho, jProcess, ouProcess));
+        }
+    }
+};
 
 
 #endif

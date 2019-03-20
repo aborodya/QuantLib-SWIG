@@ -42,7 +42,6 @@ $(BUILT_SOURCES): ../SWIG/*.i
 
 dist-hook: $(BUILT_SOURCES)
 	mkdir -p $(distdir)/cpp
-	cp ./cpp/*.vcproj $(distdir)/cpp
 	cp ./cpp/*.vcxproj $(distdir)/cpp
 	cp ./cpp/quantlib_wrap.cpp $(distdir)/cpp
 	cp ./cpp/quantlib_wrap.h $(distdir)/cpp
@@ -56,11 +55,7 @@ dist-hook: $(BUILT_SOURCES)
 	cp ./examples/*.cs $(distdir)/examples
 
 EXTRA_DIST = \
-    QuantLib_vc9.sln \
-    QuantLib_vc10.sln \
-    QuantLib_vc11.sln \
-    QuantLib_vc12.sln \
-    QuantLib_vc14.sln \
+    QuantLib.sln \
     QuantLib.props \
     swig.cmd \
     README.txt

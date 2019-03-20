@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT([QuantLib-SWIG], [1.10],
+AC_INIT([QuantLib-SWIG], [1.15],
         [quantlib-dev@lists.sourceforge.net],
         [QuantLib-SWIG])
 AC_PREREQ(2.50)
@@ -38,6 +38,14 @@ AC_MSG_RESULT([$ql_version])
 
 # check for tools
 AC_PATH_PROG([SWIG], [swig])
+if test "x$SWIG" != x; then
+	SWIG_VERSION=`swig -version 2>&1|grep Version|cut -d" " -f3`
+	SWIG_MAJOR=${SWIG_VERSION%%.*}
+	if test ${SWIG_MAJOR} = "2"; then
+		AC_MSG_WARN([You have SWIG $SWIG_VERSION installed, but at least SWIG 3.0.1 is recommended. Some features may not work. ])
+		#SWIG=
+	fi
+fi
 
 AC_PATH_PROG([PYTHON], [python])
 AM_CONDITIONAL(HAVE_PYTHON, test "x${PYTHON}" != "x")
@@ -69,26 +77,6 @@ AC_ARG_ENABLE([ruby],
               [build_ruby=yes])
 AM_CONDITIONAL(BUILD_RUBY, test "$build_ruby" != "no")
 
-AC_PATH_PROG([MZSCHEME], [mzscheme])
-AM_CONDITIONAL(HAVE_MZSCHEME, test "x${MZSCHEME}" != "x")
-AC_ARG_ENABLE([mzscheme],
-              AC_HELP_STRING([--disable-mzscheme],
-                             [If disabled, the MzScheme module
-                              will not be built]),
-              [build_mzscheme=$enableval],
-              [build_mzscheme=yes])
-AM_CONDITIONAL(BUILD_MZSCHEME, test "$build_mzscheme" != "no")
-
-AC_PATH_PROG([GUILE], [guile])
-AM_CONDITIONAL(HAVE_GUILE, test "x${GUILE}" != "x")
-AC_ARG_ENABLE([guile],
-              AC_HELP_STRING([--disable-guile],
-                             [If disabled, the Guile module
-                              will not be built]),
-              [build_guile=$enableval],
-              [build_guile=yes])
-AM_CONDITIONAL(BUILD_GUILE, test "$build_guile" != "no")
-
 AC_PATH_PROGS([MCS], [gmcs mcs gmcs2])
 AM_CONDITIONAL(HAVE_MCS, test "x${MCS}" != "x")
 AC_ARG_ENABLE([csharp],
@@ -98,16 +86,6 @@ AC_ARG_ENABLE([csharp],
               [build_mcs=$enableval],
               [build_mcs=yes])
 AM_CONDITIONAL(BUILD_MCS, test "$build_mcs" != "no")
-
-AC_PATH_PROG([OCAMLC], [ocamlc])
-AM_CONDITIONAL(HAVE_OCAML, test "x${OCAMLC}" != "x")
-AC_ARG_ENABLE([ocaml],
-              AC_HELP_STRING([--disable-ocaml],
-                             [If disabled, the OCaml module
-                              will not be built]),
-              [build_ocaml=$enableval],
-              [build_ocaml=yes])
-AM_CONDITIONAL(BUILD_OCAML, test "$build_ocaml" != "no")
 
 AC_PATH_PROG([R], [R])
 AM_CONDITIONAL(HAVE_R, test "x${R}" != "x")
@@ -130,6 +108,29 @@ AC_ARG_ENABLE([java],
               [build_java=$enableval],
               [build_java=yes])
 AM_CONDITIONAL(BUILD_JAVA, test "$build_java" != "no")
+AC_ARG_ENABLE([java-autoload],
+              AC_HELP_STRING([--disable-java-autoload],
+                             [If disabled, the Java JNI shared library
+			     will not be automatically loaded]),
+              [java_autoload=$enableval],
+              [java_autoload=yes])
+AM_CONDITIONAL(JAVA_AUTOLOAD, test "$java_autoload" != "no")
+
+AC_ARG_ENABLE([java-finalizer],
+              AC_HELP_STRING([--disable-java-finalizer],
+                             [If disabled, the finalizers
+			     will not be generated.  Be careful.]),
+              [java_finalizer=$enableval],
+              [java_finalizer=yes])
+AM_CONDITIONAL(JAVA_FINALIZER, test "$java_finalizer" != "no")
+
+AC_ARG_ENABLE([java-autocloseable],
+              AC_HELP_STRING([--enable-java-autocloseable],
+                             [If enabled, the java Objects will implement AutoCloseable]),
+              [java_autocloseable=$enableval],
+              [java_autocloseable=no])
+AM_CONDITIONAL(JAVA_AUTOCLOSEABLE, test "$java_autocloseable" != "no")
+
 
 AC_ARG_WITH([jdk-include],
             AC_HELP_STRING([--with-jdk-include=INCLUDE_PATH],
@@ -165,12 +166,7 @@ esac
 AC_CONFIG_FILES([
     Makefile
     CSharp/Makefile
-    Guile/Makefile
-    Guile/setup.scm
     Java/Makefile
-    MzScheme/Makefile
-    MzScheme/setup.scm
-    OCaml/Makefile
     Perl/Makefile
     Perl/Makefile.PL
     Python/Makefile

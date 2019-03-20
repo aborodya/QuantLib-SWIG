@@ -22,6 +22,7 @@
 #define quantlib_optimizers_i
 
 %include functions.i
+%include linearalgebra.i
 
 // 1D Solvers
 
@@ -35,26 +36,12 @@ using QuantLib::Ridder;
 using QuantLib::Secant;
 %}
 
-#if defined(SWIGMZSCHEME)
-%typecheck(SWIG_TYPECHECK_POINTER) Scheme_Object* {
-    $1 = 1;
-}
-#elif defined(SWIGGUILE)
-%typecheck(SWIG_TYPECHECK_POINTER) SCM {
-    $1 = 1;
-}
-#endif
-
 %define DeclareSolver(SolverName)
 class SolverName {
     #if defined(SWIGRUBY)
     %rename("maxEvaluations=")      setMaxEvaluations;
     %rename("lowerBound=")          setLowerBound;
     %rename("upperBound=")          setUpperBound;
-    #elif defined(SWIGMZSCHEME) || defined(SWIGGUILE)
-    %rename("max-evaluations-set!") setMaxEvaluations;
-    %rename("lower-bound-set!")     setLowerBound;
-    %rename("upper-bound-set!")     setUpperBound;
     #endif
   public:
     void setMaxEvaluations(Size evaluations);
@@ -82,28 +69,6 @@ class SolverName {
             UnaryFunction f;
             return self->solve(f, xAccuracy, guess, xMin, xMax);
         }
-        #elif defined(SWIGMZSCHEME)
-        Real solve(Scheme_Object* function, Real xAccuracy,
-                   Real guess, Real step) {
-            UnaryFunction f(function);
-            return self->solve(f, xAccuracy, guess, step);
-        }
-        Real solve(Scheme_Object* function, Real xAccuracy,
-                   Real guess, Real xMin, Real xMax) {
-            UnaryFunction f(function);
-            return self->solve(f, xAccuracy, guess, xMin, xMax);
-        }
-        #elif defined(SWIGGUILE)
-        Real solve(SCM function, Real xAccuracy,
-                   Real guess, Real step) {
-            UnaryFunction f(function);
-            return self->solve(f, xAccuracy, guess, step);
-        }
-        Real solve(SCM function, Real xAccuracy,
-                   Real guess, Real xMin, Real xMax) {
-            UnaryFunction f(function);
-            return self->solve(f, xAccuracy, guess, xMin, xMax);
-        }
         #elif defined(SWIGJAVA) || defined(SWIGCSHARP)
         Real solve(UnaryFunctionDelegate* function, Real xAccuracy,
                    Real guess, Real step) {
@@ -120,6 +85,7 @@ class SolverName {
 };
 %enddef
 
+// Keep this list in sync with bondfunctions.i yield solvers.
 // Actual solvers
 DeclareSolver(Brent);
 DeclareSolver(Bisection);
@@ -142,6 +108,7 @@ using QuantLib::BoundaryConstraint;
 using QuantLib::NoConstraint;
 using QuantLib::PositiveConstraint;
 using QuantLib::CompositeConstraint;
+using QuantLib::NonhomogeneousBoundaryConstraint;
 %}
 
 class Constraint {
@@ -170,6 +137,11 @@ class CompositeConstraint : public Constraint {
     CompositeConstraint(const Constraint& c1, const Constraint& c2);
 };
 
+class NonhomogeneousBoundaryConstraint : public Constraint {
+  public:
+    NonhomogeneousBoundaryConstraint(const Array& l, const Array& u);
+};
+
 %{
 using QuantLib::EndCriteria;
 %}
@@ -177,9 +149,6 @@ using QuantLib::EndCriteria;
 class EndCriteria {
     #if defined(SWIGRUBY)
     %rename("setPositiveOptimization!") setPositiveOptimization;
-    #elif defined(SWIGMZSCHEME) || defined(SWIGGUILE)
-    %rename(call) operator();
-    %rename("positive-optimization-set!") setPositiveOptimization;
     #elif defined(SWIGCSHARP) || defined(SWIGPERL)
     %rename(call) operator();
     #elif defined(SWIGPYTHON)
@@ -219,6 +188,16 @@ using QuantLib::SteepestDescent;
 using QuantLib::BFGS;
 using QuantLib::LevenbergMarquardt;
 using QuantLib::DifferentialEvolution;
+using QuantLib::SamplerGaussian;
+using QuantLib::SamplerLogNormal;
+using QuantLib::SamplerMirrorGaussian;
+using QuantLib::ProbabilityBoltzmannDownhill;
+using QuantLib::TemperatureExponential;
+using QuantLib::ReannealingTrivial;
+using QuantLib::GaussianSimulatedAnnealing;
+using QuantLib::MirrorGaussianSimulatedAnnealing;
+using QuantLib::LogNormalSimulatedAnnealing;
+
 %}
 
 class OptimizationMethod {
@@ -249,14 +228,98 @@ class BFGS : public OptimizationMethod {
 
 class LevenbergMarquardt : public OptimizationMethod {
   public:
-	LevenbergMarquardt(Real epsfcn = 1.0e-8,
-	                   Real xtol = 1.0e-8,
-    	               Real gtol = 1.0e-8);
+    LevenbergMarquardt(Real epsfcn = 1.0e-8,
+                       Real xtol = 1.0e-8,
+                       Real gtol = 1.0e-8);
 };
 
 class DifferentialEvolution : public OptimizationMethod {
   public:
     DifferentialEvolution();
+};
+
+class SamplerGaussian{
+  public:
+    SamplerGaussian(unsigned long seed = 0);
+};
+
+class SamplerLogNormal{
+  public:
+    SamplerLogNormal(unsigned long seed = 0);
+};
+
+class SamplerMirrorGaussian{
+  public:
+    SamplerMirrorGaussian(const Array& lower, const Array& upper, unsigned long seed = 0);
+};
+
+class ProbabilityBoltzmannDownhill{
+  public:
+    ProbabilityBoltzmannDownhill(unsigned long seed = 0);
+};
+
+class TemperatureExponential {
+  public:
+    TemperatureExponential(Real initialTemp, Size dimension, Real power = 0.95);
+};
+
+class ReannealingTrivial {
+  public:
+    ReannealingTrivial();
+};
+
+class GaussianSimulatedAnnealing : public OptimizationMethod {
+  public:
+    enum ResetScheme{
+        NoResetScheme,
+        ResetToBestPoint,
+        ResetToOrigin
+    };
+    GaussianSimulatedAnnealing(const SamplerGaussian &sampler,
+            const ProbabilityBoltzmannDownhill &probability,
+            const TemperatureExponential &temperature,
+            const ReannealingTrivial &reannealing = ReannealingTrivial(),
+            Real startTemperature = 200.0,
+            Real endTemperature = 0.01,
+            Size reAnnealSteps = 50,
+            ResetScheme resetScheme = ResetToBestPoint,
+            Size resetSteps = 150);
+};
+
+class MirrorGaussianSimulatedAnnealing : public OptimizationMethod {
+  public:
+    enum ResetScheme{
+        NoResetScheme,
+        ResetToBestPoint,
+        ResetToOrigin
+    };
+    MirrorGaussianSimulatedAnnealing(const SamplerMirrorGaussian &sampler,
+            const ProbabilityBoltzmannDownhill &probability,
+            const TemperatureExponential &temperature,
+            const ReannealingTrivial &reannealing = ReannealingTrivial(),
+            Real startTemperature = 200.0,
+            Real endTemperature = 0.01,
+            Size reAnnealSteps = 50,
+            ResetScheme resetScheme = ResetToBestPoint,
+            Size resetSteps = 150);
+};
+
+class LogNormalSimulatedAnnealing : public OptimizationMethod {
+  public:
+   enum ResetScheme{
+        NoResetScheme,
+        ResetToBestPoint,
+        ResetToOrigin
+    };
+    LogNormalSimulatedAnnealing(const SamplerLogNormal &sampler,
+            const ProbabilityBoltzmannDownhill &probability,
+            const TemperatureExponential &temperature,
+            const ReannealingTrivial &reannealing = ReannealingTrivial(),
+            Real startTemperature = 10.0,
+            Real endTemperature = 0.01,
+            Size reAnnealSteps = 50,
+            ResetScheme resetScheme = ResetToBestPoint,
+            Size resetSteps = 150);
 };
 
 %{
@@ -284,28 +347,6 @@ using QuantLib::Problem;
                 EndCriteria &e,
                 Array &iv) {
         RubyCostFunction f;
-        Problem p(f,c,iv);
-        m.minimize(p, e);
-        return p.currentValue();
-    }
-}
-#elif defined(SWIGMZSCHEME)
-%extend Optimizer {
-    Array solve(Scheme_Object* function, Constraint& c,
-                OptimizationMethod& m,
-                EndCriteria &e,
-                Array &iv) {
-        MzCostFunction f(function);
-        Problem p(f,c,iv);
-        m.minimize(p, e);
-        return p.currentValue();
-    }
-}
-#elif defined(SWIGGUILE)
-%extend Optimizer {
-    Array solve(SCM function, Constraint& c, OptimizationMethod& m,
-                EndCriteria &e, Array &iv) {
-        GuileCostFunction f(function);
         Problem p(f,c,iv);
         m.minimize(p, e);
         return p.currentValue();

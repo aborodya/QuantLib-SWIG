@@ -4,6 +4,7 @@
  Copyright (C) 2011 Lluis Pujol Bajador
  Copyright (C) 2015 Matthias Groncki
  Copyright (C) 2016 Peter Caspers
+ Copyright (C) 2018 Matthias Lungwitz
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -32,6 +33,9 @@
 %include interpolation.i
 %include indexes.i
 %include optimizers.i
+%include options.i
+
+%define QL_TYPECHECK_VOLATILITYTYPE       8210    %enddef
 
 %{
 using QuantLib::VolatilityType;
@@ -40,6 +44,23 @@ using QuantLib::Normal;
 %}
 
 enum VolatilityType { ShiftedLognormal, Normal};
+
+#if defined(SWIGPYTHON)
+%typemap(in) boost::optional<VolatilityType> %{
+    if($input == Py_None)
+        $1 = boost::none;
+    else if (PyInt_Check($input))
+        $1 = (VolatilityType) PyInt_AsLong($input);
+    else
+        $1 = (VolatilityType) PyLong_AsLong($input);
+%}
+%typecheck (QL_TYPECHECK_VOLATILITYTYPE) boost::optional<VolatilityType> {
+if (PyInt_Check($input) || PyLong_Check($input) || Py_None == $input)
+    $1 = 1;
+else
+    $1 = 0;
+}
+#endif
 
 %{
 using QuantLib::BlackVolTermStructure;
@@ -50,18 +71,6 @@ using QuantLib::SwaptionVolatilityStructure;
 
 %ignore BlackVolTermStructure;
 class BlackVolTermStructure : public Extrapolator {
-    #if defined(SWIGMZSCHEME) || defined(SWIGGUILE)
-    %rename("reference-date") referenceDate;
-    %rename("day-counter")    dayCounter;
-    %rename("max-date")       maxDate;
-    %rename("max-time")       maxTime;
-    %rename("min-strike")     minStrike;
-    %rename("max-strike")     maxStrike;
-    %rename("black-vol")      blackVol;
-    %rename("black-variance") blackVariance;
-    %rename("black-forward-vol")      blackVol;
-    %rename("black-forward-variance") blackVariance;
-    #endif
   public:
     Date referenceDate() const;
     DayCounter dayCounter() const;
@@ -99,15 +108,6 @@ RelinkableHandle<BlackVolTermStructure>;
 
 %ignore LocalVolTermStructure;
 class LocalVolTermStructure : public Extrapolator {
-    #if defined(SWIGMZSCHEME) || defined(SWIGGUILE)
-    %rename("reference-date") referenceDate;
-    %rename("day-counter")    dayCounter;
-    %rename("max-date")       maxDate;
-    %rename("max-time")       maxTime;
-    %rename("min-strike")     minStrike;
-    %rename("max-strike")     maxStrike;
-    %rename("local-vol")      localVol;
-    #endif
   public:
     Date referenceDate() const;
     DayCounter dayCounter() const;
@@ -133,15 +133,6 @@ RelinkableHandle<LocalVolTermStructure>;
 
 %ignore OptionletVolatilityStructure;
 class OptionletVolatilityStructure : public Extrapolator {
-    #if defined(SWIGMZSCHEME) || defined(SWIGGUILE)
-    %rename("reference-date") referenceDate;
-    %rename("day-counter")    dayCounter;
-    %rename("max-date")       maxDate;
-    %rename("max-time")       maxTime;
-    %rename("min-strike")     minStrike;
-    %rename("max-strike")     maxStrike;
-    %rename("black-variance") blackVariance;
-    #endif
   public:
     Date referenceDate() const;
     DayCounter dayCounter() const;
@@ -178,17 +169,6 @@ using QuantLib::SwaptionVolatilityStructure;
 
 %ignore SwaptionVolatilityStructure;
 class SwaptionVolatilityStructure : public Extrapolator {
-    #if defined(SWIGMZSCHEME) || defined(SWIGGUILE)
-    %rename("reference-date")  referenceDate;
-    %rename("day-counter")     dayCounter;
-    %rename("max-option-date")  maxOptionDate;
-    %rename("max-option-time")  maxOptionTime;
-    %rename("max-swap-tenor")      maxSwapTenor;
-    %rename("max-swap-length") maxSwapLength;
-    %rename("min-strike")      minStrike;
-    %rename("max-strike")      maxStrike;
-    %rename("black-variance")  blackVariance;
-    #endif
   public:
     Date referenceDate() const;
     DayCounter dayCounter() const;
@@ -205,6 +185,7 @@ class SwaptionVolatilityStructure : public Extrapolator {
                        Rate strike, bool extrapolate = false) const;
     Real blackVariance(Time start, Time length,
                        Rate strike, bool extrapolate = false) const;
+    Date optionDateFromTenor(const Period& p) const;
 };
 
 %template(SwaptionVolatilityStructure)
@@ -421,14 +402,6 @@ typedef boost::shared_ptr<LocalVolTermStructure> LocalVolSurfacePtr;
 %}
 %rename(LocalVolSurface) LocalVolSurfacePtr;
 class LocalVolSurfacePtr : public boost::shared_ptr<LocalVolTermStructure> {
-    #if defined(SWIGMZSCHEME) || defined(SWIGGUILE)
-    %rename("reference-date")       referenceDate;
-    %rename("day-counter") dayCounter;
-    %rename("max-date") maxDate;
-    %rename("min-strike") minStrike;
-    %rename("max-strike") maxStrike;    
-    #endif
-
     public:
      %extend {
         LocalVolSurfacePtr(const Handle<BlackVolTermStructure>& blackTS,
@@ -468,41 +441,49 @@ class ConstantOptionletVolatilityPtr
                                        const Calendar &cal,
                                        BusinessDayConvention bdc,
                                        Volatility volatility,
-                                       const DayCounter& dayCounter) {
+                                       const DayCounter& dayCounter,
+                                       const VolatilityType type = ShiftedLognormal,
+                                       const Real shift = 0.0) {
             return new ConstantOptionletVolatilityPtr(
                 new ConstantOptionletVolatility(referenceDate,
                                                 cal, bdc, volatility,
-                                                dayCounter));
+                                                dayCounter, type, shift));
         }
         ConstantOptionletVolatilityPtr(const Date& referenceDate,
                                        const Calendar &cal,
                                        BusinessDayConvention bdc,
                                        const Handle<Quote>& volatility,
-                                       const DayCounter& dayCounter) {
+                                       const DayCounter& dayCounter,
+                                       const VolatilityType type = ShiftedLognormal,
+                                       const Real shift = 0.0) {
             return new ConstantOptionletVolatilityPtr(
                 new ConstantOptionletVolatility(referenceDate,
                                                 cal, bdc, volatility,
-                                                dayCounter));
+                                                dayCounter, type, shift));
         }
         ConstantOptionletVolatilityPtr(Natural settlementDays,
                                        const Calendar &cal,
                                        BusinessDayConvention bdc,
                                        Volatility volatility,
-                                       const DayCounter& dayCounter) {
+                                       const DayCounter& dayCounter,
+                                       const VolatilityType type = ShiftedLognormal,
+                                       const Real shift = 0.0) {
             return new ConstantOptionletVolatilityPtr(
                 new ConstantOptionletVolatility(settlementDays,
                                                 cal, bdc, volatility,
-                                                dayCounter));
+                                                dayCounter, type, shift));
         }
         ConstantOptionletVolatilityPtr(Natural settlementDays,
                                        const Calendar &cal,
                                        BusinessDayConvention bdc,
                                        const Handle<Quote>& volatility,
-                                       const DayCounter& dayCounter) {
+                                       const DayCounter& dayCounter,
+                                       const VolatilityType type = ShiftedLognormal,
+                                       const Real shift = 0.0) {
             return new ConstantOptionletVolatilityPtr(
                 new ConstantOptionletVolatility(settlementDays,
                                                 cal, bdc, volatility,
-                                                dayCounter));
+                                                dayCounter, type, shift));
         }
     }
 };
@@ -664,6 +645,26 @@ class SwaptionVolCube1Ptr
                     parametersGuess,isParameterFixed,isAtmCalibrated,
                     endCriteria,maxErrorTolerance,optMethod));
         }
+
+        Matrix sparseSabrParameters() const {
+            return boost::dynamic_pointer_cast<SwaptionVolCube1>(*self)
+                ->sparseSabrParameters();
+        }
+
+        Matrix denseSabrParameters() const {
+            return boost::dynamic_pointer_cast<SwaptionVolCube1>(*self)
+                ->denseSabrParameters();
+        }
+
+        Matrix marketVolCube() const {
+            return boost::dynamic_pointer_cast<SwaptionVolCube1>(*self)
+                ->marketVolCube();
+        }
+
+        Matrix volCubeAtmCalibrated() const {
+            return boost::dynamic_pointer_cast<SwaptionVolCube1>(*self)
+                ->volCubeAtmCalibrated();
+        }
     }
 };
 
@@ -689,6 +690,510 @@ class SwaptionVolCube2Ptr
                 new SwaptionVolCube2(
                     atmVolStructure,optionTenors,swapTenors,strikeSpreads,
                     volSpreads, swi, shortSwi, vegaWeightedSmileFit));
+        }
+    }
+};
+
+%{
+using QuantLib::SmileSection;
+%}
+
+%ignore SmileSection;
+class SmileSection{
+  public:
+    SmileSection(const Date& d,
+                 const DayCounter& dc = DayCounter(),
+                 const Date& referenceDate = Date(),
+                 const VolatilityType type = ShiftedLognormal,
+                 const Rate shift = 0.0);
+    SmileSection(Time exerciseTime,
+                 const DayCounter& dc = DayCounter(),
+                 const VolatilityType type = ShiftedLognormal,
+                 const Rate shift = 0.0);
+    SmileSection() {}
+
+    Real variance(Rate strike) const;
+    Volatility volatility(Rate strike) const;
+    virtual const Date& exerciseDate() const;
+    virtual VolatilityType volatilityType() const;
+    virtual Rate shift() const;
+    virtual const Date& referenceDate() const;
+    virtual Time exerciseTime() const;
+    virtual const DayCounter& dayCounter();
+    virtual Real optionPrice(Rate strike,
+                             Option::Type type = Option::Call,
+                             Real discount=1.0) const;
+    virtual Real digitalOptionPrice(Rate strike,
+                                    Option::Type type = Option::Call,
+                                    Real discount=1.0,
+                                    Real gap=1.0e-5) const;
+    virtual Real vega(Rate strike,
+                      Real discount=1.0) const;
+    virtual Real density(Rate strike,
+                         Real discount=1.0,
+                         Real gap=1.0E-4) const;
+    Volatility volatility(Rate strike, VolatilityType type, Real shift=0.0) const;
+};
+
+%template(SmileSection) boost::shared_ptr<SmileSection>;
+IsObservable(boost::shared_ptr<SmileSection>);
+
+%{
+using QuantLib::FlatSmileSection;
+typedef boost::shared_ptr<SmileSection> FlatSmileSectionPtr;
+%}
+
+%rename(FlatSmileSection) FlatSmileSectionPtr;
+class FlatSmileSectionPtr
+    : public boost::shared_ptr<SmileSection> {
+  public:
+    %extend {
+        FlatSmileSectionPtr(const Date& d,
+                         Volatility vol,
+                         const DayCounter& dc,
+                         const Date& referenceDate = Date(),
+                         Real atmLevel = Null<Rate>(),
+                         VolatilityType type = ShiftedLognormal,
+                         Real shift = 0.0) {
+            return new FlatSmileSectionPtr(
+                new FlatSmileSection(
+                    d,
+                    vol,
+                    dc,
+                    referenceDate,
+                    atmLevel,
+                    type,
+                    shift
+                )
+            );
+        }
+        FlatSmileSectionPtr(Time exerciseTime,
+                         Volatility vol,
+                         const DayCounter& dc,
+                         Real atmLevel = Null<Rate>(),
+                         VolatilityType type = ShiftedLognormal,
+                         Real shift = 0.0) {
+            return new FlatSmileSectionPtr(
+                new FlatSmileSection(
+                    exerciseTime,
+                    vol,
+                    dc,
+                    atmLevel,
+                    type,
+                    shift
+                )
+            );
+        }
+    }
+};
+
+%{
+using QuantLib::InterpolatedSmileSection;
+using QuantLib::Actual365Fixed;
+%}
+
+%define export_smileinterpolation_curve(Name,Interpolator)
+
+%{
+typedef boost::shared_ptr<SmileSection> Name##Ptr;
+%}
+
+%rename(Name) Name##Ptr;
+class Name##Ptr : public boost::shared_ptr<SmileSection> {
+  public:
+    %extend {
+        Name##Ptr(
+               Time expiryTime,
+               const std::vector<Rate>& strikes,
+               const std::vector<Handle<Quote> >& stdDevHandles,
+               const Handle<Quote>& atmLevel,
+               const Interpolator& interpolator = Interpolator(),
+               const DayCounter& dc = Actual365Fixed(),
+               const VolatilityType type = ShiftedLognormal,
+               const Real shift = 0.0) {
+            return new Name##Ptr(
+                new InterpolatedSmileSection<Interpolator>(
+                          expiryTime,strikes,stdDevHandles,atmLevel,interpolator,dc,type,shift));
+        }
+        Name##Ptr(
+               Time expiryTime,
+               const std::vector<Rate>& strikes,
+               const std::vector<Real>& stdDevs,
+               Real atmLevel,
+               const Interpolator& interpolator = Interpolator(),
+               const DayCounter& dc = Actual365Fixed(),
+               const VolatilityType type = ShiftedLognormal,
+               const Real shift = 0.0) {
+            return new Name##Ptr(
+                new InterpolatedSmileSection<Interpolator>(
+                          expiryTime,strikes,stdDevs,atmLevel,interpolator,dc,type,shift));
+        }
+        Name##Ptr(
+               const Date& d,
+               const std::vector<Rate>& strikes,
+               const std::vector<Handle<Quote> >& stdDevHandles,
+               const Handle<Quote>& atmLevel,
+               const DayCounter& dc = Actual365Fixed(),               
+               const Interpolator& interpolator = Interpolator(),
+               const Date& referenceDate = Date(),
+               const VolatilityType type = ShiftedLognormal,
+               const Real shift = 0.0) {
+            return new Name##Ptr(
+                new InterpolatedSmileSection<Interpolator>(
+                          d,strikes,stdDevHandles,atmLevel,dc,interpolator,referenceDate,type,shift));
+        }
+        Name##Ptr(
+               const Date& d,
+               const std::vector<Rate>& strikes,
+               const std::vector<Real>& stdDevs,
+               Real atmLevel,
+               const DayCounter& dc = Actual365Fixed(),
+               const Interpolator& interpolator = Interpolator(),
+               const Date& referenceDate = Date(),
+               const VolatilityType type = ShiftedLognormal,
+               const Real shift = 0.0) {
+            return new Name##Ptr(
+                new InterpolatedSmileSection<Interpolator>(
+                          d,strikes,stdDevs,atmLevel,dc,interpolator,referenceDate,type,shift));
+        }
+    }
+};
+
+%enddef
+
+export_smileinterpolation_curve(LinearInterpolatedSmileSection, Linear);
+export_smileinterpolation_curve(CubicInterpolatedSmileSection, Cubic);
+export_smileinterpolation_curve(MonotonicCubicInterpolatedSmileSection, MonotonicCubic);
+export_smileinterpolation_curve(SplineCubicInterpolatedSmileSection, SplineCubic);
+
+%{
+using QuantLib::SabrSmileSection;
+typedef boost::shared_ptr<SmileSection> SabrSmileSectionPtr;
+%}
+
+%rename(SabrSmileSection) SabrSmileSectionPtr;
+class SabrSmileSectionPtr
+    : public boost::shared_ptr<SmileSection> {
+  public:
+    %extend {
+        SabrSmileSectionPtr(const Date& d,
+                         Rate forward,
+                         const std::vector<Real>& sabrParameters,
+                         const DayCounter& dc = Actual365Fixed(),
+                         Real shift = 0.0) {
+            return new SabrSmileSectionPtr(
+                new SabrSmileSection(
+                    d,
+                    forward,
+                    sabrParameters,
+                    dc,
+                    shift
+                )
+            );
+        }
+        SabrSmileSectionPtr(Time timeToExpiry,
+                         Rate forward,
+                         const std::vector<Real>& sabrParameters,
+                         Real shift = 0.0) {
+            return new SabrSmileSectionPtr(
+                new SabrSmileSection(
+                    timeToExpiry,
+                    forward,
+                    sabrParameters,
+                    shift
+                )
+            );
+        }
+    }
+};
+
+%{
+using QuantLib::KahaleSmileSection;
+typedef boost::shared_ptr<SmileSection> KahaleSmileSectionPtr;
+%}
+
+%rename(KahaleSmileSection) KahaleSmileSectionPtr;
+class KahaleSmileSectionPtr
+    : public boost::shared_ptr<SmileSection> {
+  public:
+    %extend {
+        KahaleSmileSectionPtr(const boost::shared_ptr<SmileSection> source,
+                           const Real atm = Null<Real>(),
+                           const bool interpolate = false,
+                           const bool exponentialExtrapolation = false,
+                           const bool deleteArbitragePoints = false,
+                           const std::vector<Real> &moneynessGrid =
+                               std::vector<Real>(),
+                           const Real gap = 1.0E-5,
+                           const int forcedLeftIndex = -1,
+                           const int forcedRightIndex = QL_MAX_INTEGER) {
+            return new KahaleSmileSectionPtr(
+                new KahaleSmileSection(
+                    source,
+                    atm,
+                    interpolate,
+                    exponentialExtrapolation,
+                    deleteArbitragePoints,
+                    moneynessGrid,
+                    gap,
+                    forcedLeftIndex,
+                    QL_MAX_INTEGER
+                )
+            );
+        }
+    }
+};
+
+%{
+using QuantLib::ZabrShortMaturityLognormal;
+using QuantLib::ZabrShortMaturityNormal;
+using QuantLib::ZabrLocalVolatility;
+using QuantLib::ZabrFullFd;
+using QuantLib::ZabrSmileSection;
+using QuantLib::ZabrInterpolatedSmileSection;
+using QuantLib::NoArbSabrSmileSection;
+using QuantLib::NoArbSabrInterpolatedSmileSection;
+using QuantLib::Option;
+%}
+
+struct ZabrShortMaturityLognormal {};
+struct ZabrShortMaturityNormal {};
+struct ZabrLocalVolatility {};
+struct ZabrFullFd {};
+
+%define export_zabrsmilesection_curve(Name,Evaluation)
+
+%{
+typedef boost::shared_ptr<SmileSection> Name##Ptr;
+%}
+
+%rename(Name) Name##Ptr;
+class Name##Ptr : public boost::shared_ptr<SmileSection> {
+  public:
+    %extend {
+        Name##Ptr(
+               Time timeToExpiry, 
+               Rate forward,
+               const std::vector<Real> &zabrParameters,
+               const std::vector<Real> &moneyness = std::vector<Real>(),
+               const Size fdRefinement = 5) {
+            return new Name##Ptr(
+                new ZabrSmileSection<Evaluation>(
+                          timeToExpiry,forward,zabrParameters,moneyness,fdRefinement));
+        }
+        Name##Ptr(
+               const Date &d, 
+               Rate forward,
+               const std::vector<Real> &zabrParameters,
+               const DayCounter &dc = Actual365Fixed(),
+               const std::vector<Real> &moneyness = std::vector<Real>(),
+               const Size fdRefinement = 5) {
+            return new Name##Ptr(
+                new ZabrSmileSection<Evaluation>(
+                          d,forward,zabrParameters,dc,moneyness,fdRefinement));
+        }
+    }
+};
+
+%enddef
+
+export_zabrsmilesection_curve(ZabrShortMaturityLognormalSmileSection, ZabrShortMaturityLognormal);
+export_zabrsmilesection_curve(ZabrShortMaturityNormalSmileSection, ZabrShortMaturityNormal);
+export_zabrsmilesection_curve(ZabrLocalVolatilitySmileSection, ZabrLocalVolatility);
+export_zabrsmilesection_curve(ZabrFullFdSmileSection, ZabrFullFd);
+
+%define export_zabrinterpolatedsmilesection_curve(Name,Evaluation)
+
+%{
+typedef boost::shared_ptr<SmileSection> Name##Ptr;
+%}
+
+%rename(Name) Name##Ptr;
+class Name##Ptr : public boost::shared_ptr<SmileSection> {
+  public:
+    %extend {
+        Name##Ptr(
+               const Date &optionDate, const Handle<Quote> &forward,
+               const std::vector<Rate> &strikes, bool hasFloatingStrikes,
+               const Handle<Quote> &atmVolatility,
+               const std::vector<Handle<Quote> > &volHandles, Real alpha, Real beta,
+               Real nu, Real rho, Real gamma, bool isAlphaFixed = false,
+               bool isBetaFixed = false, bool isNuFixed = false,
+               bool isRhoFixed = false, bool isGammaFixed = false,
+               bool vegaWeighted = true,
+               const boost::shared_ptr<EndCriteria> &endCriteria =
+               boost::shared_ptr<EndCriteria>(),
+               const boost::shared_ptr<OptimizationMethod> &method =
+               boost::shared_ptr<OptimizationMethod>(),
+               const DayCounter &dc = Actual365Fixed()) {
+            return new Name##Ptr(
+                new ZabrInterpolatedSmileSection<Evaluation>(
+                          optionDate, forward, strikes, hasFloatingStrikes, atmVolatility,
+                          volHandles, alpha, beta, nu, rho, gamma, isAlphaFixed,
+                          isBetaFixed, isNuFixed, isRhoFixed, isGammaFixed, vegaWeighted,
+                          endCriteria, method, dc));
+        }
+        Name##Ptr(
+               const Date &optionDate, const Rate &forward,
+               const std::vector<Rate> &strikes, bool hasFloatingStrikes,
+               const Volatility &atmVolatility, const std::vector<Volatility> &vols,
+               Real alpha, Real beta, Real nu, Real rho, Real gamma,
+               bool isAlphaFixed = false, bool isBetaFixed = false,
+               bool isNuFixed = false, bool isRhoFixed = false,
+               bool isGammaFixed = false, bool vegaWeighted = true,
+               const boost::shared_ptr<EndCriteria> &endCriteria =
+               boost::shared_ptr<EndCriteria>(),
+               const boost::shared_ptr<OptimizationMethod> &method =
+               boost::shared_ptr<OptimizationMethod>(),
+               const DayCounter &dc = Actual365Fixed()) {
+            return new Name##Ptr(
+                new ZabrInterpolatedSmileSection<Evaluation>(
+                          optionDate, forward, strikes, hasFloatingStrikes, atmVolatility,
+                          vols, alpha, beta, nu, rho, gamma, isAlphaFixed,
+                          isBetaFixed, isNuFixed, isRhoFixed, isGammaFixed, vegaWeighted,
+                          endCriteria, method, dc));
+        }
+        Real alpha() const {
+            return boost::dynamic_pointer_cast<ZabrInterpolatedSmileSection<Evaluation> >(*self)
+                ->alpha();
+        }
+        Real beta() const {
+            return boost::dynamic_pointer_cast<ZabrInterpolatedSmileSection<Evaluation> >(*self)
+                ->beta();
+        }
+        Real nu() const {
+            return boost::dynamic_pointer_cast<ZabrInterpolatedSmileSection<Evaluation> >(*self)
+                ->nu();
+        }
+        Real rho() const {
+            return boost::dynamic_pointer_cast<ZabrInterpolatedSmileSection<Evaluation> >(*self)
+                ->rho();
+        }
+        Real rmsError() const {
+            return boost::dynamic_pointer_cast<ZabrInterpolatedSmileSection<Evaluation> >(*self)
+                ->rmsError();
+        }
+        Real maxError() const {
+            return boost::dynamic_pointer_cast<ZabrInterpolatedSmileSection<Evaluation> >(*self)
+                ->maxError();
+        }
+        EndCriteria::Type endCriteria() const {
+            return boost::dynamic_pointer_cast<ZabrInterpolatedSmileSection<Evaluation> >(*self)
+                ->endCriteria();
+        }
+    }
+};
+
+%enddef
+
+export_zabrinterpolatedsmilesection_curve(ZabrShortMaturityLognormalInterpolatedSmileSection, ZabrShortMaturityLognormal);
+export_zabrinterpolatedsmilesection_curve(ZabrShortMaturityNormalInterpolatedSmileSection, ZabrShortMaturityNormal);
+export_zabrinterpolatedsmilesection_curve(ZabrLocalVolatilityInterpolatedSmileSection, ZabrLocalVolatility);
+export_zabrinterpolatedsmilesection_curve(ZabrFullFdInterpolatedSmileSection, ZabrFullFd);
+
+%{
+typedef boost::shared_ptr<SmileSection> NoArbSabrSmileSectionPtr;
+typedef boost::shared_ptr<SmileSection> NoArbSabrInterpolatedSmileSectionPtr;
+%}
+
+%rename(NoArbSabrSmileSection) NoArbSabrSmileSectionPtr;
+class NoArbSabrSmileSectionPtr : public boost::shared_ptr<SmileSection> {
+  public:
+    %extend {
+        NoArbSabrSmileSectionPtr(
+               Time timeToExpiry, 
+               Rate forward,
+               const std::vector<Real> &sabrParameters,
+               const Real shift = 0.0) {
+            return new NoArbSabrSmileSectionPtr(
+                new NoArbSabrSmileSection(
+                          timeToExpiry,forward,sabrParameters,shift));
+        }
+        NoArbSabrSmileSectionPtr(
+               const Date &d, 
+               Rate forward,
+               const std::vector<Real> &sabrParameters,
+               const DayCounter &dc = Actual365Fixed(),
+               const Real shift = 0.0) {
+            return new NoArbSabrSmileSectionPtr(
+                new NoArbSabrSmileSection(
+                          d,forward,sabrParameters,dc,shift));
+        }       
+    }
+};
+
+%rename(NoArbSabrInterpolatedSmileSection) NoArbSabrInterpolatedSmileSectionPtr;
+class NoArbSabrInterpolatedSmileSectionPtr : public boost::shared_ptr<SmileSection> {
+  public:
+    %extend {
+        NoArbSabrInterpolatedSmileSectionPtr(
+               const Date &optionDate, const Handle<Quote> &forward,
+               const std::vector<Rate> &strikes, bool hasFloatingStrikes,
+               const Handle<Quote> &atmVolatility,
+               const std::vector<Handle<Quote> > &volHandles, Real alpha, Real beta,
+               Real nu, Real rho, bool isAlphaFixed = false,
+               bool isBetaFixed = false, bool isNuFixed = false,
+               bool isRhoFixed = false,
+               bool vegaWeighted = true,
+               const boost::shared_ptr<EndCriteria> &endCriteria =
+               boost::shared_ptr<EndCriteria>(),
+               const boost::shared_ptr<OptimizationMethod> &method =
+               boost::shared_ptr<OptimizationMethod>(),
+               const DayCounter &dc = Actual365Fixed()) {
+            return new NoArbSabrInterpolatedSmileSectionPtr(
+                new NoArbSabrInterpolatedSmileSection(
+                          optionDate, forward, strikes, hasFloatingStrikes, atmVolatility,
+                          volHandles, alpha, beta, nu, rho, isAlphaFixed,
+                          isBetaFixed, isNuFixed, isRhoFixed, vegaWeighted,
+                          endCriteria, method, dc));
+        }
+        NoArbSabrInterpolatedSmileSectionPtr(
+               const Date &optionDate, const Rate &forward,
+               const std::vector<Rate> &strikes, bool hasFloatingStrikes,
+               const Volatility &atmVolatility, const std::vector<Volatility> &vols,
+               Real alpha, Real beta, Real nu, Real rho,
+               bool isAlphaFixed = false, bool isBetaFixed = false,
+               bool isNuFixed = false, bool isRhoFixed = false,
+               bool vegaWeighted = true,
+               const boost::shared_ptr<EndCriteria> &endCriteria =
+               boost::shared_ptr<EndCriteria>(),
+               const boost::shared_ptr<OptimizationMethod> &method =
+               boost::shared_ptr<OptimizationMethod>(),
+               const DayCounter &dc = Actual365Fixed()) {
+            return new NoArbSabrInterpolatedSmileSectionPtr(
+                new NoArbSabrInterpolatedSmileSection(
+                          optionDate, forward, strikes, hasFloatingStrikes, atmVolatility,
+                          vols, alpha, beta, nu, rho, isAlphaFixed,
+                          isBetaFixed, isNuFixed, isRhoFixed, vegaWeighted,
+                          endCriteria, method, dc));
+        }
+        Real alpha() const {
+            return boost::dynamic_pointer_cast<NoArbSabrInterpolatedSmileSection>(*self)
+                ->alpha();
+        }
+        Real beta() const {
+            return boost::dynamic_pointer_cast<NoArbSabrInterpolatedSmileSection>(*self)
+                ->beta();
+        }
+        Real nu() const {
+            return boost::dynamic_pointer_cast<NoArbSabrInterpolatedSmileSection>(*self)
+                ->nu();
+        }
+        Real rho() const {
+            return boost::dynamic_pointer_cast<NoArbSabrInterpolatedSmileSection>(*self)
+                ->rho();
+        }
+        Real rmsError() const {
+            return boost::dynamic_pointer_cast<NoArbSabrInterpolatedSmileSection>(*self)
+                ->rmsError();
+        }
+        Real maxError() const {
+            return boost::dynamic_pointer_cast<NoArbSabrInterpolatedSmileSection>(*self)
+                ->maxError();
+        }
+        EndCriteria::Type endCriteria() const {
+            return boost::dynamic_pointer_cast<NoArbSabrInterpolatedSmileSection>(*self)
+                ->endCriteria();
         }
     }
 };

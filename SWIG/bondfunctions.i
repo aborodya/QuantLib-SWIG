@@ -33,28 +33,6 @@ using QuantLib::BondFunctions;
 class BondFunctions {
     #if defined(SWIGPYTHON) || defined (SWIGRUBY)
     %rename(bondYield) yield;
-    #elif defined(SWIGMZSCHEME) || defined(SWIGGUILE)
-    %rename("start-date")                 startDate;
-    %rename("maturity-date")              maturityDate;
-    %rename("is-tradeable")               isTradable;
-    %rename("previous-cash-flow-date")    previousCashFlowDate;
-    %rename("next-cash-flow-date")        nextCashFlowDate;
-    %rename("previous-cash-flow-amount")  previousCashFlowAmount;
-    %rename("next-cash-flow-amount")      nextCashFlowAmount;
-    %rename("previous-coupon-rate")       previousCouponRate;
-    %rename("next-coupon-rate")           nextCouponRate;
-    %rename("accrual-start-date")         accrualStartDate;
-    %rename("accrual-end-date")           accrualEndDate;
-    %rename("accrual-period")             accrualPeriod;
-    %rename("accrual-days")               accrualDays;
-    %rename("accrued-period")             accruedPeriod;
-    %rename("accrued-days")               accruedDays;
-    %rename("accrued-amount")             accruedAmount;
-    %rename("clean-price")                cleanPrice;
-    %rename("atm-rate")                   atmRate;
-    %rename("basis-point-value")          basisPointValue;
-    %rename("yield-value-basis-point")    yieldValueBasisPoint;
-    %rename("z-spread") zSpread;
     #endif
   public:
     %extend {
@@ -146,12 +124,12 @@ class BondFunctions {
         }
         static Real accruedAmount(const BondPtr& bond,
                                   Date settlementDate = Date()){
-        
+
             return QuantLib::BondFunctions::accruedAmount(
                 *(boost::dynamic_pointer_cast<Bond>(bond)), 
                 settlementDate);
         }
-        
+
         static Real cleanPrice(
                    const BondPtr& bond,
                    const boost::shared_ptr<YieldTermStructure>& discountCurve,
@@ -245,6 +223,41 @@ class BondFunctions {
                         maxIterations,
                         guess);
         }
+
+        %define DefineYieldFunctionSolver(SolverType)
+        static Rate yield ## SolverType(SolverType solver,
+                                         const BondPtr& bond,
+                                         Real cleanPrice,
+                                         const DayCounter& dayCounter,
+                                         Compounding compounding,
+                                         Frequency frequency,
+                                         Date settlementDate = Date(),
+                                         Real accuracy = 1.0e-10,
+                                         Rate guess = 0.05) {
+            return QuantLib::BondFunctions::yield<SolverType>(
+                        solver,
+                        *(boost::dynamic_pointer_cast<Bond>(bond)),
+                        cleanPrice,
+                        dayCounter,
+                        compounding,
+                        frequency,
+                        settlementDate,
+                        accuracy,
+                        guess);
+        }
+        %enddef
+
+        // See optimizers.i for solver definitions.
+        DefineYieldFunctionSolver(Brent);
+        DefineYieldFunctionSolver(Bisection);
+        DefineYieldFunctionSolver(FalsePosition);
+        DefineYieldFunctionSolver(Ridder);
+        DefineYieldFunctionSolver(Secant);
+        #if defined(SWIGPYTHON)
+        DefineYieldFunctionSolver(Newton);
+        DefineYieldFunctionSolver(NewtonSafe);
+        #endif
+
         static Time duration(const BondPtr& bond,
                              const InterestRate& yield,
                              Duration::Type type = Duration::Modified,
@@ -349,8 +362,8 @@ class BondFunctions {
                               Rate guess = 0.0){
             return QuantLib::BondFunctions::zSpread(
                         *(boost::dynamic_pointer_cast<Bond>(bond)),
-                        cleanPrice, 
-                        discountCurve, 
+                        cleanPrice,
+                        discountCurve,
                         dayCounter,
                         compounding,
                         frequency,
@@ -358,9 +371,9 @@ class BondFunctions {
                         accuracy,
                         maxIterations,
                         guess);
-            
+
         }
-        
+
     }
 };
 
