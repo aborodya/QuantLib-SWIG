@@ -3,6 +3,7 @@
  Copyright (C) 2000, 2001, 2002, 2003 RiskMap srl
  Copyright (C) 2003, 2004, 2005 StatPro Italia srl
  Copyright (C) 2008 Tito Ingargiola
+ Copyright (C) 2018, 2019 Matthias Lungwitz
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -38,11 +39,8 @@ Matrix getCovariance(const Array& volatilities, const Matrix& correlations) {
 using QuantLib::Path;
 %}
 
-#if defined(SWIGRUBY)
-%mixin Path "Enumerable";
-#endif
 class Path {
-    #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+    #if defined(SWIGPYTHON)
     %rename(__len__) length;
     #endif
   private:
@@ -54,7 +52,7 @@ class Path {
     Real back() const;
     Time time(Size i) const;
     %extend {
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+        #if defined(SWIGPYTHON)
         Real __getitem__(Integer i) {
             Integer size_ = Integer(self->length());
             if (i>=0 && i<size_) {
@@ -66,67 +64,52 @@ class Path {
             }
         }
         #endif
-        #if defined(SWIGRUBY)
-        void each() {
-            for (Size i=0; i<self->length(); i++)
-                rb_yield(rb_float_new((*self)[i]));
-        }
-        #endif
     }
 };
-
-%{
-typedef QuantLib::PathGenerator<GaussianRandomSequenceGenerator>
-    GaussianPathGenerator;
-%}
 %template(SamplePath) Sample<Path>;
-class GaussianPathGenerator {
-  public:
-    %extend {
-        GaussianPathGenerator(const StochasticProcess1DPtr& process,
-                              Time length, Size steps,
-                              const GaussianRandomSequenceGenerator& rsg,
-                              bool brownianBridge) {
-            boost::shared_ptr<StochasticProcess1D> process1d =
-                boost::dynamic_pointer_cast<StochasticProcess1D>(process);
-            return new GaussianPathGenerator(process1d,length,steps,
-                                             rsg,brownianBridge);
-        }
-    }
-    Sample<Path> next() const;
-    Sample<Path> antithetic() const;
-};
 
 %{
-typedef QuantLib::PathGenerator<GaussianLowDiscrepancySequenceGenerator>
-    GaussianSobolPathGenerator;
+using QuantLib::PathGenerator;
 %}
-class GaussianSobolPathGenerator {
+
+#if defined(SWIGR)
+%rename(nextSample) next;
+#endif
+
+template <class GSG>
+class PathGenerator {
   public:
-    %extend {
-        GaussianSobolPathGenerator(
-                           const StochasticProcess1DPtr& process,
-                           Time length, Size steps,
-                           const GaussianLowDiscrepancySequenceGenerator& rsg,
-                           bool brownianBridge) {
-            boost::shared_ptr<StochasticProcess1D> process1d =
-                boost::dynamic_pointer_cast<StochasticProcess1D>(process);
-            return new GaussianSobolPathGenerator(process1d,length,steps,
-                                                  rsg,brownianBridge);
-        }
-    }
-    Sample<Path> next() const;
-    Sample<Path> antithetic() const;
+    typedef Sample<Path> sample_type;
+    PathGenerator(const boost::shared_ptr<StochasticProcess>&,
+                      Time length,
+                      Size timeSteps,
+                      const GSG& generator,
+                      bool brownianBridge);
+    PathGenerator(const boost::shared_ptr<StochasticProcess>&,
+                      const TimeGrid& timeGrid,
+                      const GSG& generator,
+                      bool brownianBridge);
+    const sample_type& next() const;
+    const sample_type& antithetic() const;
+    Size size() const;
+    const TimeGrid& timeGrid() const;
 };
 
+%template(GaussianPathGenerator)
+    PathGenerator<GaussianRandomSequenceGenerator>;
+%template(GaussianSobolPathGenerator)
+    PathGenerator<GaussianLowDiscrepancySequenceGenerator>;
+%template(InvCumulativeMersenneTwisterPathGenerator)
+    PathGenerator<InverseCumulativeRsg<RandomSequenceGenerator<MersenneTwisterUniformRng>,
+                         InverseCumulativeNormal> >;
 
 %{
 using QuantLib::MultiPath;
 %}
 
 class MultiPath {
-    #if defined(SWIGPYTHON) || defined(SWIGRUBY)
-    %rename(__len__)        pathSize;
+    #if defined(SWIGPYTHON)
+    %rename(__len__) pathSize;
     #endif
   private:
     MultiPath();
@@ -136,7 +119,7 @@ class MultiPath {
 	Path& at(Size j);
 
     %extend {
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+        #if defined(SWIGPYTHON)
         const Path& __getitem__(Integer i) {
             Integer assets_ = Integer(self->assetNumber());
             if (i>=0 && i<assets_) {
@@ -145,21 +128,6 @@ class MultiPath {
                 return (*self)[assets_+i];
             } else {
                 throw std::out_of_range("multi-path index out of range");
-            }
-        }
-        #endif
-        #if defined(SWIGRUBY)
-        void each_path() {
-            for (Size i=0; i<self->assetNumber(); i++)
-                rb_yield(SWIG_NewPointerObj(&((*self)[i]),
-                                            $descriptor(Path *), 0));
-        }
-        void each_step() {
-            for (Size j=0; j<self->pathSize(); j++) {
-                VALUE v = rb_ary_new2(self->assetNumber());
-                for (Size i=0; i<self->assetNumber(); i++)
-                    rb_ary_store(v,i,rb_float_new((*self)[i][j]));
-                rb_yield(v);
             }
         }
         #endif
@@ -212,22 +180,13 @@ public:
       return outp;
     }
     std::vector<unsigned int> bridgeIndex() const{
-    	const std::vector<Size> &tmp = $self->bridgeIndex();
-    	std::vector<unsigned int> outp(tmp.size());
-    	std::copy(tmp.begin(), tmp.end(), outp.begin());
-    	return outp;
+        return to_vector<unsigned int>($self->bridgeIndex());
     }
     std::vector<unsigned int> leftIndex() const{
-    	const std::vector<Size> &tmp = $self->leftIndex();
-    	std::vector<unsigned int> outp(tmp.size());
-    	std::copy(tmp.begin(), tmp.end(), outp.begin());
-    	return outp;
+        return to_vector<unsigned int>($self->leftIndex());
     }
     std::vector<unsigned int> rightIndex() const{
-    	const std::vector<Size> &tmp = $self->rightIndex();
-    	std::vector<unsigned int> outp(tmp.size());
-    	std::copy(tmp.begin(), tmp.end(), outp.begin());
-    	return outp;
+        return to_vector<unsigned int>($self->rightIndex());
     }
   }
 };

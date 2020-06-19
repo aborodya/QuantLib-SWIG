@@ -76,17 +76,7 @@ else
 }
 #endif
 
-#if defined(SWIGRUBY)
-%mixin Calendar "Comparable";
-#endif
 class Calendar {
-    #if defined(SWIGRUBY)
-    %rename("isBusinessDay?")   isBusinessDay;
-    %rename("isHoliday?")       isHoliday;
-    %rename("isEndOfMonth?")    isEndOfMonth;
-    %rename("addHoliday!")      addHoliday;
-    %rename("removeHoliday!")   removeHoliday;
-    #endif
   protected:
     Calendar();
   public:
@@ -109,26 +99,23 @@ class Calendar {
                                    const Date& to,
                                    bool includeFirst = true,
                                    bool includeLast = false);
-    static std::vector<Date> holidayList(const Calendar& calendar,
-                                   const Date& from,
-                                   const Date& to,
-                                   bool includeWeekEnds = false);
+    std::vector<Date> holidayList(const Date& from,
+                                  const Date& to,
+                                  bool includeWeekEnds = false);
+    std::vector<Date> businessDayList(const Date& from,
+                                      const Date& to);
     std::string name();
     %extend {
-        #if !defined(SWIGPERL)
         std::string __str__() {
             return self->name()+" calendar";
         }
-        #endif
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY) || defined(SWIGJAVA)
+        #if defined(SWIGPYTHON) || defined(SWIGJAVA)
         bool __eq__(const Calendar& other) {
             return (*self) == other;
         }
-        #if defined(SWIGPYTHON) || defined(SWIGJAVA)
         bool __ne__(const Calendar& other) {
             return (*self) != other;
         }
-        #endif
         #endif
     }
     #if defined(SWIGPYTHON)
@@ -175,6 +162,12 @@ namespace QuantLib {
 
     class Denmark : public Calendar {};
     class Finland : public Calendar {};
+
+    class France : public Calendar {
+      public:
+        enum Market { Settlement, Exchange };
+        France(Market m = Settlement);
+    };
 
     class Germany : public Calendar {
       public:

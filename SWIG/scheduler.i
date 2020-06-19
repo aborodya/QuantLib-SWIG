@@ -55,16 +55,10 @@ else
 }
 #endif
 
-#if defined(SWIGRUBY)
-%mixin Schedule "Enumerable";
-#endif
 class Schedule {
-    #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+    #if defined(SWIGPYTHON)
     %rename(__len__)       size;
     %ignore                date;
-    #endif
-    #if defined(SWIGRUBY)
-    %rename("isRegular?")  isRegular;
     #endif
   public:
     #if defined(SWIGPYTHON)
@@ -95,10 +89,26 @@ class Schedule {
     Schedule();
     Size size() const;
     Date date(Size i) const;
+    Date previousDate(const Date& refDate) const;
+    Date nextDate(const Date& refDate) const;
+    bool hasIsRegular() const;
     bool isRegular(Size i) const;
+    const std::vector<bool>& isRegular() const;
+    const Calendar& calendar() const;
+    const Date& startDate() const;
+    const Date& endDate() const;
+    bool hasTenor() const;
+    const Period& tenor() const;
+    BusinessDayConvention businessDayConvention() const;
+    bool hasTerminationDateBusinessDayConvention() const;
+    BusinessDayConvention terminationDateBusinessDayConvention() const;
+    bool hasRule() const;
+    DateGeneration::Rule rule() const;
+    bool hasEndOfMonth() const;
+    bool endOfMonth() const;
     Schedule until(Date truncationDate) const;
     %extend {
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+        #if defined(SWIGPYTHON)
         Date __getitem__(Integer i) {
             Integer size_ = static_cast<Integer>(self->size());
             if (i>=0 && i<size_) {
@@ -107,15 +117,6 @@ class Schedule {
                 return self->date(size_+i);
             } else {
                 throw std::out_of_range("schedule index out of range");
-            }
-        }
-        #endif
-        #if defined(SWIGRUBY)
-        void each() {
-            for (Size i=0; i<self->size(); i++) {
-                Date* d = new Date(self->date(i));
-                rb_yield(SWIG_NewPointerObj((void *) d,
-                                            $descriptor(Date *), 1));
             }
         }
         #endif

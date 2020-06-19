@@ -1,6 +1,7 @@
 
 /*
  Copyright (C) 2017 Wojciech Ślusarski
+ Copyright (C) 2019 Matthias Lungwitz
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -19,13 +20,17 @@
 #ifndef quantlib_black_formula_i
 #define quantlib_black_formula_i
 
+%include payoffs.i
 
 %{
 using QuantLib::blackFormula;
 using QuantLib::blackFormulaImpliedStdDev;
+using QuantLib::blackFormulaImpliedStdDevLiRS;
 using QuantLib::blackFormulaCashItmProbability;
+using QuantLib::blackFormulaAssetItmProbability;
 using QuantLib::bachelierBlackFormula;
 using QuantLib::bachelierBlackFormulaImpliedVol;
+using QuantLib::bachelierBlackFormulaAssetItmProbability;
 %}
 
 
@@ -46,12 +51,53 @@ Real blackFormulaImpliedStdDev(Option::Type optionType,
                                 Real accuracy = 1.0e-6,
                                 Natural maxIterations = 100);
 
+Real blackFormulaImpliedStdDevLiRS(
+    Option::Type optionType,
+    Real strike,
+    Real forward,
+    Real blackPrice,
+    Real discount = 1.0,
+    Real displacement = 0.0,
+    Real guess = Null<Real>(),
+    Real omega = 1.0,
+    Real accuracy = 1.0e-6,
+    Natural maxIterations = 100);
+
+Real blackFormulaImpliedStdDevLiRS(
+    const boost::shared_ptr<PlainVanillaPayoff>& payoff,
+    Real forward,
+    Real blackPrice,
+    Real discount = 1.0,
+    Real displacement = 0.0,
+    Real guess = Null<Real>(),
+    Real omega = 1.0,
+    Real accuracy = 1.0e-6,
+    Natural maxIterations = 100);
 
 Real blackFormulaCashItmProbability(Option::Type optionType,
                                     Real strike,
                                     Real forward,
                                     Real stdDev,
                                     Real displacement = 0.0);
+
+Real blackFormulaCashItmProbability(
+                        const boost::shared_ptr<PlainVanillaPayoff>& payoff,
+                        Real forward,
+                        Real stdDev,
+                        Real displacement = 0.0);
+
+Real blackFormulaAssetItmProbability(
+                        Option::Type optionType,
+                        Real strike,
+                        Real forward,
+                        Real stdDev,
+                        Real displacement = 0.0);
+
+Real blackFormulaAssetItmProbability(
+                        const boost::shared_ptr<PlainVanillaPayoff>& payoff,
+                        Real forward,
+                        Real stdDev,
+                        Real displacement = 0.0);
 
 Real bachelierBlackFormula(Option::Type optionType,
                             Real strike,
@@ -66,6 +112,16 @@ Real bachelierBlackFormulaImpliedVol(Option::Type optionType,
                                 Real bachelierPrice,
                                 Real discount = 1.0);
 
+Real bachelierBlackFormulaAssetItmProbability(
+                        Option::Type optionType,
+                        Real strike,
+                        Real forward,
+                        Real stdDev);
+
+Real bachelierBlackFormulaAssetItmProbability(
+                    const boost::shared_ptr<PlainVanillaPayoff>& payoff,
+                    Real forward,
+                    Real stdDev);      
 
 %{
 using QuantLib::BlackDeltaCalculator;

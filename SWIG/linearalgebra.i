@@ -61,19 +61,27 @@ bool extractArray(PyObject* source, Array* target) {
     }
 }
 %}
+
 %typemap(in) Array (Array* v) {
     if (extractArray($input,&$1)) {
         ;
     } else {
-        SWIG_ConvertPtr($input,(void **) &v, $&1_descriptor,1);
-        $1 = *v;
+        if (SWIG_ConvertPtr($input,(void **) &v, $&1_descriptor,1) != -1)
+            $1 = *v;
+        else {
+            PyErr_SetString(PyExc_TypeError, "Array expected");
+            return NULL;
+        }
     }
 };
 %typemap(in) const Array& (Array temp) {
     if (extractArray($input,&temp)) {
         $1 = &temp;
     } else {
-        SWIG_ConvertPtr($input,(void **) &$1,$1_descriptor,1);
+        if (SWIG_ConvertPtr($input,(void **) &$1,$1_descriptor,1) == -1) {
+            PyErr_SetString(PyExc_TypeError, "Array expected");
+            return NULL;
+        }
     }
 };
 %typecheck(QL_TYPECHECK_ARRAY) Array {
@@ -280,189 +288,6 @@ bool extractArray(PyObject* source, Array* target) {
             $1 = 0;
     }
 }
-#elif defined(SWIGRUBY)
-%typemap(in) Array (Array* v) {
-    if (rb_obj_is_kind_of($input,rb_cArray)) {
-        Size size = RARRAY_LEN($input);
-        $1 = Array(size);
-        for (Size i=0; i<size; i++) {
-            VALUE o = RARRAY_PTR($input)[i];
-            if (TYPE(o) == T_FLOAT)
-                (($1_type &)$1)[i] = NUM2DBL(o);
-            else if (FIXNUM_P(o))
-                (($1_type &)$1)[i] = Real(FIX2INT(o));
-            else
-                rb_raise(rb_eTypeError,
-                         "wrong argument type"
-                         " (expected Array)");
-        }
-    } else {
-        SWIG_ConvertPtr($input,(void **) &v,$&1_descriptor,1);
-        $1 = *v;
-    }
-}
-%typemap(in) const Array& (Array temp),
-             const Array* (Array temp) {
-    if (rb_obj_is_kind_of($input,rb_cArray)) {
-        Size size = RARRAY_LEN($input);
-        temp = Array(size);
-        $1 = &temp;
-        for (Size i=0; i<size; i++) {
-            VALUE o = RARRAY_PTR($input)[i];
-            if (TYPE(o) == T_FLOAT)
-                temp[i] = NUM2DBL(o);
-            else if (FIXNUM_P(o))
-                temp[i] = Real(FIX2INT(o));
-            else
-                rb_raise(rb_eTypeError,
-                         "wrong argument type"
-                         " (expected Array)");
-        }
-    } else {
-        SWIG_ConvertPtr($input,(void **) &$1,$1_descriptor,1);
-    }
-}
-%typecheck(QL_TYPECHECK_ARRAY) Array {
-    /* native sequence? */
-    if (rb_obj_is_kind_of($input,rb_cArray)) {
-        $1 = 1;
-    /* wrapped Array? */
-    } else {
-        Array* v;
-        if (SWIG_ConvertPtr($input,(void **) &v,
-                            $&1_descriptor,0) != -1)
-            $1 = 1;
-        else
-            $1 = 0;
-    }
-}
-%typecheck(QL_TYPECHECK_ARRAY) const Array & {
-    /* native sequence? */
-    if (rb_obj_is_kind_of($input,rb_cArray)) {
-        $1 = 1;
-    /* wrapped Array? */
-    } else {
-        Array* v;
-        if (SWIG_ConvertPtr($input,(void **) &v,
-                            $1_descriptor,0) != -1)
-            $1 = 1;
-        else
-            $1 = 0;
-    }
-}
-
-
-%typemap(in) Matrix (Matrix* m) {
-    if (rb_obj_is_kind_of($input,rb_cArray)) {
-        Size rows, cols;
-        rows = RARRAY_LEN($input);
-        if (rows > 0) {
-            VALUE o = RARRAY_PTR($input)[0];
-            if (rb_obj_is_kind_of(o,rb_cArray)) {
-                cols = RARRAY_LEN(o);
-            } else {
-                rb_raise(rb_eTypeError,
-                         "wrong argument type (expected Matrix)");
-            }
-        } else {
-            cols = 0;
-        }
-        $1 = Matrix(rows,cols);
-        for (Size i=0; i<rows; i++) {
-            VALUE o = RARRAY_PTR($input)[i];
-            if (rb_obj_is_kind_of(o,rb_cArray)) {
-                if (Size(RARRAY_LEN(o)) != cols) {
-                    rb_raise(rb_eTypeError,
-                             "Matrix must have equal-length rows");
-                }
-                for (Size j=0; j<cols; j++) {
-                    VALUE x = RARRAY_PTR(o)[j];
-                    if (SWIG_FLOAT_P(x))
-                        $1[i][j] = SWIG_NUM2DBL(x);
-                    else
-                        rb_raise(rb_eTypeError,
-                                 "wrong argument type (expected Matrix)");
-                }
-            } else {
-                rb_raise(rb_eTypeError,
-                         "wrong argument type (expected Matrix)");
-            }
-        }
-    } else {
-        SWIG_ConvertPtr($input,(void **) &m,$&1_descriptor,1);
-        $1 = *m;
-    }
-}
-%typemap(in) const Matrix& (Matrix temp),
-             const Matrix* (Matrix temp) {
-    if (rb_obj_is_kind_of($input,rb_cArray)) {
-        Size rows, cols;
-        rows = RARRAY_LEN($input);
-        if (rows > 0) {
-            VALUE o = RARRAY_PTR($input)[0];
-            if (rb_obj_is_kind_of(o,rb_cArray)) {
-                cols = RARRAY_LEN(o);
-            } else {
-                rb_raise(rb_eTypeError,
-                         "wrong argument type (expected Matrix)");
-            }
-        } else {
-            cols = 0;
-        }
-        temp = Matrix(rows,cols);
-        $1 = &temp;
-        for (Size i=0; i<rows; i++) {
-            VALUE o = RARRAY_PTR($input)[i];
-            if (rb_obj_is_kind_of(o,rb_cArray)) {
-                if (Size(RARRAY_LEN(o)) != cols) {
-                    rb_raise(rb_eTypeError,
-                             "Matrix must have equal-length rows");
-                }
-                for (Size j=0; j<cols; j++) {
-                    VALUE x = RARRAY_PTR(o)[j];
-                    if (SWIG_FLOAT_P(x))
-                        temp[i][j] = SWIG_NUM2DBL(x);
-                    else
-                        rb_raise(rb_eTypeError,
-                                 "wrong argument type (expected Matrix)");
-                }
-            } else {
-                rb_raise(rb_eTypeError,
-                         "wrong argument type (expected Matrix)");
-            }
-        }
-    } else {
-        SWIG_ConvertPtr($input,(void **) &$1,$1_descriptor,1);
-    }
-}
-%typecheck(QL_TYPECHECK_MATRIX) Matrix {
-    /* native sequence? */
-    if (rb_obj_is_kind_of($input,rb_cArray)) {
-        $1 = 1;
-    /* wrapped Matrix? */
-    } else {
-        Matrix* m;
-        if (SWIG_ConvertPtr($input,(void **) &m,
-                            $&1_descriptor,0) != -1)
-            $1 = 1;
-        else
-            $1 = 0;
-    }
-}
-%typecheck(QL_TYPECHECK_MATRIX) const Matrix & {
-    /* native sequence? */
-    if (rb_obj_is_kind_of($input,rb_cArray)) {
-        $1 = 1;
-    /* wrapped Matrix? */
-    } else {
-        Matrix* m;
-        if (SWIG_ConvertPtr($input,(void **) &m,
-                            $1_descriptor,0) != -1)
-            $1 = 1;
-        else
-            $1 = 0;
-    }
-}
 #endif
 
 #if defined(SWIGR)
@@ -490,13 +315,27 @@ function(x,y) plot(as.data.frame(x)))
 %}
 #endif
 
-#if defined(SWIGRUBY)
-%mixin Array "Enumerable";
-#elif defined(SWIGCSHARP)
+#if defined(SWIGR)
+%Rruntime %{
+setMethod("+", c("_p_Array", "_p_Array"),
+    function(e1,e2) Array___add__(e1,e2))
+setMethod("-", c("_p_Array", "_p_Array"),
+    function(e1,e2) Array___sub__(e1,e2))
+setMethod("*", c("_p_Array", "_p_Array"),
+    function(e1,e2) Array___mul__(e1,e2))
+setMethod("*", c("_p_Array", "numeric"),
+    function(e1,e2) Array___mul__(e1,e2))
+setMethod("/", c("_p_Array", "numeric"),
+    function(e1,e2) Array___div__(e1,e2))    
+%}
+#endif
+
+
+#if defined(SWIGCSHARP)
 %rename(QlArray) Array;
 #endif
 class Array {
-    #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+    #if defined(SWIGPYTHON)
     %rename(__len__)   size;
     #endif
   public:
@@ -510,7 +349,7 @@ class Array {
             out << *self;
             return out.str();
         }
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY) || defined(SWIGR)
+        #if defined(SWIGPYTHON) || defined(SWIGR)
         Array __add__(const Array& a) {
             return Array(*self+a);
         }
@@ -565,13 +404,7 @@ class Array {
             return (self->size() != 0);
         }
         #endif
-        #if defined(SWIGRUBY)
-        void each() {
-            for (Size i=0; i<self->size(); i++)
-                rb_yield(rb_float_new((*self)[i]));
-        }
-        #endif
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+        #if defined(SWIGPYTHON)
         Real __getitem__(Integer i) {
             Integer size_ = static_cast<Integer>(self->size());
             if (i>=0 && i<size_) {
@@ -609,7 +442,7 @@ class Array {
                 throw std::out_of_range("array index out of range");
             }
         }
-        #elif defined(SWIGCSHARP) || defined(SWIGJAVA) || defined(SWIGPERL)
+        #elif defined(SWIGCSHARP) || defined(SWIGJAVA)
         Real get(Size i) {
             if (i<self->size())
                 return (*self)[i];
@@ -635,7 +468,7 @@ typedef QuantLib::LexicographicalView<Array::iterator>::y_iterator
     DefaultLexicographicalViewColumn;
 %}
 
-#if defined(SWIGPYTHON) || defined(SWIGRUBY) || defined(SWIGR)
+#if defined(SWIGPYTHON) || defined(SWIGR)
 class DefaultLexicographicalViewColumn {
   private:
     // access control - no constructor exported
@@ -675,7 +508,7 @@ class DefaultLexicographicalView {
             s << "\n";
             return s.str();
         }
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY) || defined(SWIGR)
+        #if defined(SWIGPYTHON) || defined(SWIGR)
         DefaultLexicographicalViewColumn __getitem__(Size i) {
             return (*self)[i];
         }
@@ -693,7 +526,7 @@ using QuantLib::transpose;
 using QuantLib::SVD;
 %}
 
-#if defined(SWIGPYTHON) || defined(SWIGRUBY)
+#if defined(SWIGPYTHON)
 class MatrixRow {
   private:
     MatrixRow();
@@ -722,7 +555,7 @@ class Matrix {
             out << *self;
             return out.str();
         }
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+        #if defined(SWIGPYTHON)
         Matrix __add__(const Matrix& m) {
             return *self+m;
         }
@@ -742,7 +575,7 @@ class Matrix {
             return *self/x;
         }
         #endif
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+        #if defined(SWIGPYTHON)
         MatrixRow __getitem__(Size i) {
             return (*self)[i];
         }
@@ -753,7 +586,7 @@ class Matrix {
         void setitem(Size i, Size j, Real x) {
             (*self)[i][j] = x;
         }
-        #elif defined(SWIGCSHARP) || defined(SWIGJAVA) || defined(SWIGPERL)
+        #elif defined(SWIGCSHARP) || defined(SWIGJAVA)
         Real get(Size i, Size j) {
             return (*self)[i][j];
         }
@@ -787,9 +620,11 @@ class Matrix {
     }
 };
 
+
 // functions
 
 %{
+using QuantLib::inverse;
 using QuantLib::pseudoSqrt;
 using QuantLib::SalvagingAlgorithm;
 %}
@@ -801,6 +636,7 @@ struct SalvagingAlgorithm {
     enum Type { None, Spectral };
 };
 
+Matrix inverse(const Matrix& m);
 Matrix transpose(const Matrix& m);
 Matrix outerProduct(const Array& v1, const Array& v2);
 Matrix pseudoSqrt(const Matrix& m, SalvagingAlgorithm::Type a);
@@ -813,5 +649,217 @@ class SVD {
     Matrix S() const;
     const Array& singularValues() const;
 };
+
+%{
+using QuantLib::Disposable;
+using QuantLib::BiCGstab;
+using QuantLib::GMRES;
+%}
+
+#if defined(SWIGPYTHON)
+%{
+Disposable<Array> extractArray(
+    PyObject* source, const std::string& methodName) {
+      
+    QL_ENSURE(source != NULL,
+              "failed to call " + methodName + " on Python object");
+
+    QL_ENSURE(source != Py_None, methodName + " returned None");
+        
+    Array* ptr;            
+    const int err = SWIG_ConvertPtr(
+        source, (void **) &ptr, SWIGTYPE_p_Array, SWIG_POINTER_EXCEPTION);
+
+    if (err != 0) {
+        Py_XDECREF(source);
+        QL_FAIL("return type must be of type QuantLib Array in " 
+            + methodName);
+    }
+    
+    Array tmp(*ptr);          
+    Py_XDECREF(source);
+     
+    return tmp;
+}
+
+class MatrixMultiplicationProxy {
+  public:
+    MatrixMultiplicationProxy(PyObject* matrixMult)
+    : matrixMult_(matrixMult) {
+        Py_XINCREF(matrixMult_);    
+    }
+    
+    MatrixMultiplicationProxy(const MatrixMultiplicationProxy& p) 
+    : matrixMult_(p.matrixMult_) {
+        Py_XINCREF(matrixMult_);
+    }
+        
+    MatrixMultiplicationProxy& operator=(const MatrixMultiplicationProxy& f) {
+        if ((this != &f) && (matrixMult_ != f.matrixMult_)) {
+            Py_XDECREF(matrixMult_);
+            matrixMult_ = f.matrixMult_;
+            Py_XINCREF(matrixMult_);
+        }
+        return *this;
+    }
+        
+    ~MatrixMultiplicationProxy() {
+        Py_XDECREF(matrixMult_);    
+    }
+    
+    Disposable<Array> operator()(const Array& x) const {
+        PyObject* pyArray = SWIG_NewPointerObj(
+            SWIG_as_voidptr(&x), SWIGTYPE_p_Array, 0);
+            
+        PyObject* pyResult 
+            = PyObject_CallFunction(matrixMult_, "O", pyArray);
+        
+        Py_XDECREF(pyArray);
+        
+        return extractArray(pyResult, "matrix multiplication");         
+    }
+    
+  private:
+    PyObject* matrixMult_;      
+};
+%}
+
+class MatrixMultiplicationProxy {
+  public:
+    MatrixMultiplicationProxy(PyObject* matrixMult);
+    
+    %extend {
+	    Array operator()(const Array& x) const {
+	    	Array retVal = self->operator()(x);
+	    	return retVal;
+	    }
+	}    
+};
+
+#elif defined(SWIGJAVA) || defined(SWIGCSHARP)
+
+%{
+class MatrixMultiplicationDelegate {
+  public:
+    virtual ~MatrixMultiplicationDelegate() {}
+      
+    virtual Array apply(const Array& x) const {
+        QL_FAIL("implementation of MatrixMultiplicationDelegate.apply is missing");        
+    }
+};
+
+class MatrixMultiplicationProxy {
+  public:
+    MatrixMultiplicationProxy(MatrixMultiplicationDelegate* delegate)
+    : delegate_(delegate) {}
+    
+    Disposable<Array> operator()(const Array& x) const {
+        Array retVal = delegate_->apply(x);        
+        return retVal;
+    }
+               
+  private:
+      MatrixMultiplicationDelegate* const delegate_; 
+};
+%}
+
+class MatrixMultiplicationDelegate {
+  public:
+    virtual ~MatrixMultiplicationDelegate();      
+    virtual Array apply(const Array& x) const;
+};
+
+#endif
+
+#if defined(SWIGPYTHON) || defined(SWIGJAVA) || defined(SWIGCSHARP)
+
+%shared_ptr(BiCGstab)
+class BiCGstab  {
+  public:
+    %extend {
+        Array solve(const Array& b, const Array& x0 = Array()) const {
+                return self->solve(b, x0).x; 
+        }
+#if defined(SWIGPYTHON)
+        BiCGstab(const MatrixMultiplicationProxy& proxy, Size maxIter, Real relTol) {              
+            return new BiCGstab(BiCGstab::MatrixMult(proxy), maxIter, relTol);                       
+        }
+        
+        BiCGstab(const MatrixMultiplicationProxy& proxy, Size maxIter, Real relTol,
+                 const MatrixMultiplicationProxy& preconditioner) {              
+            return new BiCGstab(
+                BiCGstab::MatrixMult(proxy), maxIter, relTol,
+                BiCGstab::MatrixMult(preconditioner));                       
+        }
+#else
+        BiCGstab(MatrixMultiplicationDelegate* delegate, Size maxIter, Real relTol) {
+        	MatrixMultiplicationProxy proxy(delegate);          
+            return new BiCGstab(BiCGstab::MatrixMult(proxy), maxIter, relTol);                       
+        }
+        
+        BiCGstab(MatrixMultiplicationDelegate* delegate, Size maxIter, Real relTol,
+                 MatrixMultiplicationDelegate* preconditioner) {              
+        	MatrixMultiplicationProxy p1(delegate); 
+        	MatrixMultiplicationProxy p2(preconditioner);
+            return new BiCGstab(
+                BiCGstab::MatrixMult(p1), maxIter, relTol, BiCGstab::MatrixMult(p2));                       
+        }
+#endif        
+    }
+};
+
+
+%shared_ptr(GMRES)
+class GMRES  {
+  public:
+    %extend {
+        Array solve(const Array& b, const Array& x0 = Array()) const {
+            return self->solve(b, x0).x;
+        }
+        Array solveWithRestart(
+            Size restart, const Array& b, const Array& x0 = Array()) const {
+            return self->solveWithRestart(restart, b, x0).x;
+        }
+
+#if defined(SWIGPYTHON)
+        GMRES(const MatrixMultiplicationProxy& proxy, Size maxIter, Real relTol) {              
+            return new GMRES(GMRES::MatrixMult(proxy), maxIter, relTol);                       
+        }
+        
+        GMRES(const MatrixMultiplicationProxy& proxy, Size maxIter, Real relTol,
+              const MatrixMultiplicationProxy& preconditioner) {              
+            return new GMRES(
+                GMRES::MatrixMult(proxy), maxIter, relTol,
+                GMRES::MatrixMult(preconditioner));                       
+        }
+#else
+        GMRES(MatrixMultiplicationDelegate* delegate, Size maxIter, Real relTol) {
+        	MatrixMultiplicationProxy proxy(delegate);              
+            return new GMRES(GMRES::MatrixMult(proxy), maxIter, relTol);                       
+        }
+        
+        GMRES(MatrixMultiplicationDelegate* delegate, Size maxIter, Real relTol,
+              const MatrixMultiplicationProxy& preconditioner) {
+        	MatrixMultiplicationProxy p1(delegate); 
+        	MatrixMultiplicationProxy p2(preconditioner);                                      
+            return new GMRES(
+                GMRES::MatrixMult(p1), maxIter, relTol, GMRES::MatrixMult(p2));                       
+        }
+#endif        
+    }    
+};
+
+#endif 
+
+%{
+using QuantLib::close;
+using QuantLib::close_enough;
+%}
+
+bool close(Real x, Real y);
+bool close(Real x, Real y, Size n);
+
+bool close_enough(Real x, Real y);
+bool close_enough(Real x, Real y, Size n);
 
 #endif

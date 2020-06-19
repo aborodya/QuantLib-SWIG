@@ -10,10 +10,10 @@ if BUILD_MCS
 all-local: libNQuantLibc.so NQuantLib.dll
 
 libNQuantLibc.so: cpp/quantlib_wrap.o
-	g++ -shared cpp/quantlib_wrap.o -o libNQuantLibc.so `quantlib-config --libs`
+	$(CXX) -shared cpp/quantlib_wrap.o -o libNQuantLibc.so `quantlib-config --libs`
 
 cpp/quantlib_wrap.o: $(BUILT_SOURCES)
-	g++ -c -fpic $(CXXFLAGS) cpp/quantlib_wrap.cpp -o cpp/quantlib_wrap.o
+	$(CXX) -c -fpic $(CXXFLAGS) cpp/quantlib_wrap.cpp -o cpp/quantlib_wrap.o `quantlib-config --cflags`
 
 NQuantLib.dll: $(BUILT_SOURCES)
 	$(MCS) -nologo -target:library -out:NQuantLib.dll csharp/*.cs
@@ -21,8 +21,8 @@ NQuantLib.dll: $(BUILT_SOURCES)
 check-local: examples/BermudanSwaption.exe \
              examples/EquityOption.exe \
              examples/libNQuantLibc.so examples/NQuantLib.dll
-	./examples/BermudanSwaption.exe
-	./examples/EquityOption.exe
+	$(MONO) ./examples/BermudanSwaption.exe
+	$(MONO) ./examples/EquityOption.exe
 
 examples/%.exe: examples/%.cs
 	$(MCS) -nologo -target:exe -out:$@ -reference:NQuantLib.dll $<

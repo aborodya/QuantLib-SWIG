@@ -20,23 +20,22 @@
 #define quantlib_observer_i
 
 %include common.i
+%include boost_shared_ptr.i
 
 %{
 using QuantLib::Observer;
 using QuantLib::Observable;
 %}
 
-%template(Observable) boost::shared_ptr<Observable>;
-%define IsObservable(Type)
-#if defined(SWIGRUBY)
-%rename("toObservable") Type::asObservable;
-#endif
-%extend Type {
+%shared_ptr(Observable);
+class Observable {};
+
+
+%extend Handle {
     boost::shared_ptr<Observable> asObservable() {
         return boost::shared_ptr<Observable>(*self);
     }
 }
-%enddef
 
 
 #if defined(SWIGPYTHON)
@@ -90,48 +89,16 @@ class PyObserver {
     void unregisterWith(const boost::shared_ptr<Observable>&);
     %pythoncode %{
         def registerWith(self,x):
-            self._registerWith(x.asObservable())
+            if hasattr(x, "asObservable"):
+                self._registerWith(x.asObservable())
+            else:
+                self._registerWith(x)
         def unregisterWith(self,x):
-            self._unregisterWith(x.asObservable())
+            if hasattr(x, "asObservable"):
+                self._unregisterWith(x.asObservable())
+            else:
+                self._unregisterWith(x)
     %}
-};
-
-#elif defined(SWIGRUBY)
-
-%{
-// C++ wrapper for Ruby observer
-class RubyObserver : public Observer {
-  public:
-    RubyObserver(VALUE callback)
-    : callback_(callback) {}
-    void mark() { ((void (*)(VALUE))(rb_gc_mark))(callback_); }
-    void update() {
-        ID method = rb_intern("call");
-        rb_funcall(callback_,method,0);
-    }
-  private:
-    VALUE callback_;
-    // inhibit copies
-    RubyObserver(const RubyObserver&) {}
-    RubyObserver& operator=(const RubyObserver&) { return *this; }
-};
-
-void markRubyObserver(void* p) {
-    RubyObserver* o = static_cast<RubyObserver*>(p);
-    o->mark();
-}
-%}
-
-// Ruby wrapper
-%rename(Observer) RubyObserver;
-%markfunc RubyObserver "markRubyObserver";
-class RubyObserver {
-    %rename(_registerWith)   registerWith;
-    %rename(_unregisterWith) unregisterWith;
-  public:
-    RubyObserver(VALUE callback);
-    void registerWith(const boost::shared_ptr<Observable>&);
-    void unregisterWith(const boost::shared_ptr<Observable>&);
 };
 
 #endif

@@ -33,9 +33,6 @@ using QuantLib::Money;
 %}
 
 class Currency {
-    #if defined(SWIGRUBY)
-    %rename("empty?") empty;
-    #endif
   public:
     const std::string& name() const;
     const std::string& code() const;
@@ -48,17 +45,13 @@ class Currency {
     bool empty() const;
     const Currency& triangulationCurrency() const;
     %extend {
-        #if !defined(SWIGPERL)
         std::string __str__() {
             return self->name();
         }
-        #endif
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY) || defined(SWIGJAVA)
+        #if defined(SWIGPYTHON) || defined(SWIGJAVA)
         bool __eq__(const Currency& other) {
             return (*self) == other;
         }
-        #endif
-        #if defined(SWIGPYTHON) || defined(SWIGJAVA)
         bool __ne__(const Currency& other) {
             return (*self) != other;
         }

@@ -21,6 +21,7 @@
 
 %include stl.i
 %include exception.i
+%include boost_shared_ptr.i
 
 %define QL_TYPECHECK_BOOL       7210    %enddef
 
@@ -53,15 +54,6 @@ else
 }
 #endif
 
-#if defined(SWIGRUBY)
-%{
-#ifndef SWIG_FLOAT_P
-#define SWIG_FLOAT_P(x) ((TYPE(x) == T_FLOAT) || FIXNUM_P(x))
-#define SWIG_NUM2DBL(x) (FIXNUM_P(x) ? FIX2INT(x) : NUM2DBL(x))
-#endif
-%}
-#endif
-
 %{
 // generally useful classes
 using QuantLib::Error;
@@ -71,40 +63,29 @@ using QuantLib::RelinkableHandle;
 
 namespace boost {
 
-    template <class T>
-    class shared_ptr {
-        #if defined(SWIGRUBY)
-        %rename("null?") isNull;
-        #endif
-      public:
-        T* operator->();
+    %extend shared_ptr {
+        T* operator->() {
+            return (*self).operator->();
+        }
         #if defined(SWIGPYTHON)
-        %extend {
-            bool __nonzero__() {
-                return !!(*self);
-            }
-            bool __bool__() {
-                return !!(*self);
-            }
+        bool __nonzero__() {
+            return !!(*self);
+        }
+        bool __bool__() {
+            return !!(*self);
         }
         #else
-        %extend {
-            bool isNull() {
-                return !(*self);
-            }
+        bool isNull() {
+            return !(*self);
         }
         #endif
-    };
+    }
 
 }
 
 
 template <class T>
 class Handle {
-    #if defined(SWIGRUBY)
-    %rename("null?")   isNull;
-    %rename("empty?")  empty;
-    #endif
   public:
     Handle(const boost::shared_ptr<T>& = boost::shared_ptr<T>());
     boost::shared_ptr<T> operator->();
@@ -124,12 +105,15 @@ class Handle {
 
 template <class T>
 class RelinkableHandle : public Handle<T> {
-    #if defined(SWIGRUBY)
-    %rename("linkTo!")  linkTo;
-    #endif
   public:
     RelinkableHandle(const boost::shared_ptr<T>& = boost::shared_ptr<T>());
     void linkTo(const boost::shared_ptr<T>&);
+    %extend {
+        // could be defined in C++ class, added here in the meantime
+        void reset() {
+            self->linkTo(boost::shared_ptr<T>());
+        }
+    }
 };
 
 %define swigr_list_converter(ContainerRType,

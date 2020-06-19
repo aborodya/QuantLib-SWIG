@@ -119,7 +119,6 @@ enum Month {
     December  = 12
 };
 
-
 %{
 using QuantLib::TimeUnit;
 using QuantLib::Days;
@@ -206,7 +205,7 @@ class Period {
             out << "Period(\"" << QuantLib::io::short_period(*self) << "\")";
             return out.str();
         }
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY) || defined(SWIGR)
+        #if defined(SWIGPYTHON) || defined(SWIGR)
         Period __neg__() {
             return -(*self);
         }
@@ -290,16 +289,14 @@ import datetime as _datetime
 #endif
 
 #if defined(SWIGR)
+%rename(__add__) Date::operator+;
+%rename(__sub__) Date::operator-;
 %Rruntime %{
 setAs("_p_Date", "character",
 function(from) {from$ISO()})
 
 setAs("character", "_p_Date",
 function(from) { DateParser_parseISO(from) })
-
-
-setMethod("as.numeric", "_p_Date",
-    function(x) x$serialNumber())
 setMethod("+", c("_p_Date", "numeric"),
     function(e1,e2) Date___add__(e1,e2))
 setMethod("-", c("_p_Date", "numeric"),
@@ -309,13 +306,12 @@ setMethod("+", c("_p_Date", "_p_Period"),
 setMethod("-", c("_p_Date", "_p_Period"),
     function(e1,e2) Date___sub__(e1,e2))
 
+setMethod("as.numeric", "_p_Date",
+    function(x) x$serialNumber())
+
 setAs("character", "_p_Period",
 function(from) {Period(from)})
 %}
-#endif
-
-#if defined(SWIGRUBY)
-%mixin Date "Comparable";
 #endif
 
 #if defined(SWIGCSHARP)
@@ -388,10 +384,6 @@ function(from) {Period(from)})
 %}
 
 class Date {
-    #if defined(SWIGRUBY)
-    %rename("isLeap?")        isLeap;
-    %rename("isEndOfMonth?")         isEndOfMonth;
-    #endif
   public:
     Date();
     Date(Day d, Month m, Year y);
@@ -503,8 +495,7 @@ class Date {
     static bool isEndOfMonth(const Date&);
     static Date nextWeekday(const Date&, Weekday);
     static Date nthWeekday(Size n, Weekday, Month m, Year y);
-    #if defined(SWIGPYTHON) || defined(SWIGRUBY) || defined(SWIGJAVA) \
-     || defined(SWIGR) || defined(SWIGCSHARP)
+    #if defined(SWIGPYTHON) || defined(SWIGJAVA) || defined(SWIGR) || defined(SWIGCSHARP)
     Date operator+(BigInteger days) const;
     Date operator-(BigInteger days) const;
     Date operator+(const Period&) const;
@@ -528,7 +519,11 @@ class Date {
         }
         std::string __str__() {
             std::ostringstream out;
+        %#ifdef QL_HIGH_RESOLUTION_DATE
+            out << QuantLib::io::iso_datetime(*self);
+        %#else
             out << *self;
+        %#endif
             return out.str();
         }
         std::string __repr__() {
@@ -536,8 +531,16 @@ class Date {
             if (*self == Date())
                 out << "Date()";
             else
+        %#ifdef QL_HIGH_RESOLUTION_DATE
+                out << "Date(" << self->dayOfMonth() << ","
+                    << int(self->month()) << "," << self->year() << ","
+                    << self->hours() << "," << self->minutes() << ","
+                    << self->seconds() << "," << self->milliseconds() << ","
+                    << self->microseconds() << ")";
+        %#else
                 out << "Date(" << self->dayOfMonth() << ","
                     << int(self->month()) << "," << self->year() << ")";
+        %#endif
             return out.str();
         }
         std::string ISO() {
@@ -545,7 +548,7 @@ class Date {
             out << QuantLib::io::iso_date(*self);
             return out.str();
         }
-        #if defined(SWIGPYTHON) || defined(SWIGRUBY) || defined(SWIGR)
+        #if defined(SWIGPYTHON) || defined(SWIGR)
         BigInteger operator-(const Date& other) {
             return *self - other;
         }
@@ -585,11 +588,6 @@ class Date {
         }
         bool __ne__(const Date& other) {
             return *self != other;
-        }
-        #endif
-        #if defined(SWIGRUBY)
-        Date succ() {
-            return *self + 1;
         }
         #endif
     }
@@ -654,6 +652,8 @@ namespace std {
     %template(DateVector) vector<Date>;
 }
 
+Time daysBetween(const Date&, const Date&);
+
 #if defined(SWIGR)
 
 
@@ -673,7 +673,6 @@ a
 %}
 
 
-Time daysBetween(const Date&, const Date&);
 bool operator==(const Date&, const Date&);
 bool operator!=(const Date&, const Date&);
 bool operator<(const Date&, const Date&);
@@ -688,10 +687,6 @@ using QuantLib::IMM;
 %}
 
 struct IMM {
-    #if defined(SWIGRUBY)
-    %rename("isIMMdate?")        isIMMdate;
-    %rename("isIMMcode?")        isIMMcode;
-    #endif
     enum Month { F =  1, G =  2, H =  3,
                  J =  4, K =  5, M =  6,
                  N =  7, Q =  8, U =  9,
@@ -721,10 +716,6 @@ using QuantLib::ASX;
 %}
 
 struct ASX {
-    #if defined(SWIGRUBY)
-    %rename("isASXdate?")        isASXdate;
-    %rename("isASXcode?")        isASXcode;
-    #endif
     enum Month { F =  1, G =  2, H =  3,
                  J =  4, K =  5, M =  6,
                  N =  7, Q =  8, U =  9,

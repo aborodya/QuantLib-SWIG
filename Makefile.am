@@ -1,11 +1,11 @@
 
-SUBDIRS = CSharp Java Perl Python R Ruby Scala
+SUBDIRS = CSharp Java Python R Scala
 
 EXTRA_DIST = \
 	ChangeLog.txt \
 	LICENSE.TXT \
-	News.txt \
-	Readme.txt \
+	News.md \
+	README.md \
 	autogen.sh
 
 

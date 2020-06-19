@@ -27,60 +27,10 @@
 %}
 #endif
 
-#if defined(SWIGRUBY)
-%{
-#ifdef accept
-#undef accept
-#endif
-#ifdef close
-#undef close
-#endif
-#ifdef times
-#undef times
-#endif
-#ifdef Sleep
-#undef Sleep
-#endif
-#ifdef bind
-#undef bind
-#endif
-#ifdef ALLOC
-#undef ALLOC
-#endif
-%}
-#endif
-
-#if defined(SWIGPERL)
-%{
-#ifdef accept
-#undef accept
-#endif
-#ifdef Null
-#undef Null
-#endif
-#ifdef Nullch
-#undef Nullch
-#define Nullch ((char*) NULL)
-#endif
-#ifdef Stat
-#undef Stat
-#endif
-#ifdef seed
-#undef seed
-#endif
-#ifdef setbuf
-#undef setbuf
-#endif
-#ifdef times
-#undef times
-#endif
-%}
-#endif
-
 %{
 #include <ql/quantlib.hpp>
 
-#if QL_HEX_VERSION < 0x011400f0
+#if QL_HEX_VERSION < 0x01190000
     #error using an old version of QuantLib, please update
 #endif
 
@@ -148,9 +98,7 @@
 #endif
 
 // common name mappings
-#if defined(SWIGPERL)
-%rename("to_string")     __str__;
-#elif defined(SWIGJAVA)
+#if defined(SWIGJAVA)
 %rename(add)           operator+;
 %rename(add)           __add__;
 %rename(subtract)      operator-;
@@ -198,6 +146,7 @@
 %include dividends.i
 %include exchangerates.i
 %include exercise.i
+%include fdm.i
 %include fittedbondcurve.i
 %include forwardcurve.i
 %include fra.i
@@ -217,6 +166,7 @@
 %include montecarlo.i
 %include null.i
 %include observer.i
+%include ode.i
 %include operators.i
 %include optimizers.i
 %include parameter.i
@@ -230,6 +180,7 @@
 %include scheduler.i
 %include settings.i
 %include shortratemodels.i
+%include slv.i
 %include statistics.i
 %include stochasticprocess.i
 %include swap.i

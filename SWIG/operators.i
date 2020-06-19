@@ -27,54 +27,30 @@ typedef QuantLib::BoundaryCondition<QuantLib::TridiagonalOperator>
         DefaultBoundaryCondition;
 %}
 
-#if defined(SWIGJAVA) || defined(SWIGCSHARP)
-%rename(_BoundaryCondition) DefaultBoundaryCondition;
-#else
-%ignore DefaultBoundaryCondition;
-#endif
+%shared_ptr(DefaultBoundaryCondition)
 class DefaultBoundaryCondition {
-  public:
-    enum Side { None, Upper, Lower };
-#if defined(SWIGJAVA) || defined(SWIGCSHARP)
+    %rename(NoSide) None;
   private:
     DefaultBoundaryCondition();
-#endif
+  public:
+    enum Side { None, Upper, Lower };
 };
-%template(BoundaryCondition) boost::shared_ptr<DefaultBoundaryCondition>;
-%extend boost::shared_ptr<DefaultBoundaryCondition> {
-    static const DefaultBoundaryCondition::Side NoSide =
-        DefaultBoundaryCondition::None;
-    static const DefaultBoundaryCondition::Side Upper =
-        DefaultBoundaryCondition::Upper;
-    static const DefaultBoundaryCondition::Side Lower =
-        DefaultBoundaryCondition::Lower;
-}
 
 %{
 using QuantLib::NeumannBC;
 using QuantLib::DirichletBC;
-typedef boost::shared_ptr<DefaultBoundaryCondition> NeumannBCPtr;
-typedef boost::shared_ptr<DefaultBoundaryCondition> DirichletBCPtr;
 %}
 
-%rename(NeumannBC) NeumannBCPtr;
-class NeumannBCPtr: public boost::shared_ptr<DefaultBoundaryCondition> {
+%shared_ptr(NeumannBC)
+class NeumannBC : public DefaultBoundaryCondition {
   public:
-    %extend {
-        NeumannBCPtr(Real value, DefaultBoundaryCondition::Side side) {
-            return new NeumannBCPtr(new NeumannBC(value, side));
-        }
-    }
+    NeumannBC(Real value, DefaultBoundaryCondition::Side side);
 };
 
-%rename(DirichletBC) DirichletBCPtr;
-class DirichletBCPtr: public boost::shared_ptr<DefaultBoundaryCondition> {
+%shared_ptr(DirichletBC)
+class DirichletBC : public DefaultBoundaryCondition {
   public:
-    %extend {
-        DirichletBCPtr(Real value, DefaultBoundaryCondition::Side side) {
-            return new DirichletBCPtr(new DirichletBC(value, side));
-        }
-    }
+    DirichletBC(Real value, DefaultBoundaryCondition::Side side);
 };
 
 
@@ -84,12 +60,6 @@ using QuantLib::TridiagonalOperator;
 %}
 
 class TridiagonalOperator {
-    #if defined(SWIGRUBY)
-    %rename("firstRow=")      setFirstRow;
-    %rename("midRow=")        setMidRow;
-    %rename("midRows=")       setMidRows;
-    %rename("lastRow=")       setLastRow;
-    #endif
   public:
     // constructors
     TridiagonalOperator(const Array& low, const Array& mid, const Array& high);
@@ -105,7 +75,7 @@ class TridiagonalOperator {
     void setLastRow(Real, Real);
     // identity
     static TridiagonalOperator identity(Size size);
-    #if defined(SWIGPYTHON) || defined(SWIGRUBY)
+    #if defined(SWIGPYTHON)
     %extend {
         TridiagonalOperator __add__(const TridiagonalOperator& O) {
             return *self+O;

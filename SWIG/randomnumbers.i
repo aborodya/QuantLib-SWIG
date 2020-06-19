@@ -3,6 +3,7 @@
  Copyright (C) 2003 Ferdinando Ametrano
  Copyright (C) 2000, 2001, 2002, 2003 RiskMap srl
  Copyright (C) 2016 Gouthaman Balaraman
+ Copyright (C) 2019 Matthias Lungwitz
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -22,10 +23,6 @@
 #define quantlib_random_numbers_i
 
 %include distributions.i
-
-#if defined(SWIGRUBY)
-#pragma SWIG nowarn=314
-#endif
 
 %{
 using QuantLib::Sample;
@@ -77,6 +74,10 @@ class Sample {
 %template(SampleRealVector) Sample<std::vector<Real> >; 
 
 /************* Uniform number generators *************/
+
+#if defined(SWIGR)
+%rename(nextSample) next;
+#endif
 
 class LecuyerUniformRng {
   public:
@@ -187,17 +188,14 @@ class SobolRsg {
             JoeKuoD5, JoeKuoD6, JoeKuoD7,
             Kuo, Kuo2, Kuo3 };
     SobolRsg(Size dimensionality, BigInteger seed=0,
-            DirectionIntegers directionIntegers = QuantLib::SobolRsg::Jaeckel);
+             DirectionIntegers directionIntegers = QuantLib::SobolRsg::Jaeckel);
     const Sample<std::vector<Real> >& nextSequence() const;
     const Sample<std::vector<Real> >& lastSequence() const;
     Size dimension() const;
     void skipTo(Size n);
     %extend{
       std::vector<unsigned int> nextInt32Sequence(){
-        const std::vector<boost::uint_least32_t> &tmp = $self->nextInt32Sequence();
-        std::vector<unsigned int> outp(tmp.size());
-        std::copy(tmp.begin(),tmp.end(),outp.begin());
-        return outp;
+          return to_vector<unsigned int>($self->nextInt32Sequence());
       }
     }
 };
@@ -215,6 +213,8 @@ template<class RNG> class RandomSequenceGenerator {
   public:
     RandomSequenceGenerator(Size dimensionality,
                             const RNG& rng);
+    RandomSequenceGenerator(Size dimensionality,
+                                BigNatural seed = 0);
     const Sample<std::vector<Real> >& nextSequence() const;
     Size dimension() const;
 };
@@ -236,7 +236,10 @@ class UniformRandomSequenceGenerator {
 
 class UniformLowDiscrepancySequenceGenerator {
   public:
-    UniformLowDiscrepancySequenceGenerator(Size dimensionality);
+    UniformLowDiscrepancySequenceGenerator(
+        Size dimensionality,
+        BigInteger seed=0,
+        SobolRsg::DirectionIntegers directionIntegers = QuantLib::SobolRsg::Jaeckel);
     const Sample<std::vector<Real> >& nextSequence() const;
     Size dimension() const;
 };
@@ -247,6 +250,8 @@ template <class U, class I>
 class InverseCumulativeRsg {
   public:
     InverseCumulativeRsg(const U& uniformSequenceGenerator);
+    InverseCumulativeRsg(const U& uniformSequenceGenerator,
+                             const I& inverseCumulative);
     const Sample<std::vector<Real> >& nextSequence() const;
     Size dimension() const;
 };
