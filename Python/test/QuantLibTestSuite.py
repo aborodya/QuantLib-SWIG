@@ -41,6 +41,8 @@ from americanquantooption import AmericanQuantoOptionTest
 from extrapolation import ExtrapolationTest
 from fdm import FdmTest
 from gjrgarch import GJRGARCHEngineTest, GJRGARCHCalibrationTest
+from swaption import SwaptionTest
+from volatilities import SwaptionVolatilityCubeTest
 
 
 def test():
@@ -75,6 +77,8 @@ def test():
     suite.addTest(unittest.makeSuite(FdmTest, 'test'))
     suite.addTest(unittest.makeSuite(GJRGARCHEngineTest, "test"))
     suite.addTest(unittest.makeSuite(GJRGARCHCalibrationTest, "test"))
+    suite.addTest(unittest.makeSuite(SwaptionTest, "test"))
+    suite.addTest(unittest.makeSuite(SwaptionVolatilityCubeTest, 'test'))
 
     result = unittest.TextTestRunner(verbosity=2).run(suite)
 
