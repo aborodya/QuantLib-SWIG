@@ -1527,11 +1527,37 @@ class ForwardEuropeanEngine : public PricingEngine {
     ForwardEuropeanEngine(const ext::shared_ptr<GeneralizedBlackScholesProcess>&);
 };
 
+%shared_ptr(QuantoEuropeanEngine)
+class QuantoEuropeanEngine : public PricingEngine {
+  public:
+    QuantoEuropeanEngine(const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
+                         const Handle<YieldTermStructure>& foreignRiskFreeRate,
+                         const Handle<BlackVolTermStructure>& exchangeRateVolatility,
+                         const Handle<Quote>& correlation);
+};
+
+%shared_ptr(QuantoForwardEuropeanEngine)
+class QuantoForwardEuropeanEngine : public PricingEngine {
+  public:
+    QuantoForwardEuropeanEngine(const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
+                                const Handle<YieldTermStructure>& foreignRiskFreeRate,
+                                const Handle<BlackVolTermStructure>& exchangeRateVolatility,
+                                const Handle<Quote>& correlation);
+};
+
 
 %{
+using QuantLib::AnalyticHestonForwardEuropeanEngine;
 using QuantLib::MCForwardEuropeanBSEngine;
 using QuantLib::MCForwardEuropeanHestonEngine;
 %}
+
+%shared_ptr(AnalyticHestonForwardEuropeanEngine)
+class AnalyticHestonForwardEuropeanEngine : public PricingEngine {
+  public:
+    AnalyticHestonForwardEuropeanEngine(const ext::shared_ptr<HestonProcess>& process,
+                                        Size integrationOrder = 144);
+};
 
 %shared_ptr(MCForwardEuropeanBSEngine<PseudoRandom>);
 %shared_ptr(MCForwardEuropeanBSEngine<LowDiscrepancy>);
@@ -1617,7 +1643,8 @@ class MCForwardEuropeanHestonEngine : public PricingEngine {
                                       intOrNull requiredSamples = Null<Size>(),
                                       doubleOrNull requiredTolerance = Null<Real>(),
                                       intOrNull maxSamples = Null<Size>(),
-                                      BigInteger seed = 0) {
+                                      BigInteger seed = 0,
+                                      bool controlVariate = false) {
             return new MCForwardEuropeanHestonEngine<RNG>(process,
                                                           timeSteps,
                                                           timeStepsPerYear,
@@ -1625,7 +1652,8 @@ class MCForwardEuropeanHestonEngine : public PricingEngine {
                                                           requiredSamples,
                                                           requiredTolerance,
                                                           maxSamples,
-                                                          seed);
+                                                          seed,
+                                                          controlVariate);
         }
     }
 };
@@ -1643,7 +1671,8 @@ class MCForwardEuropeanHestonEngine : public PricingEngine {
                                       requiredSamples=None,
                                       requiredTolerance=None,
                                       maxSamples=None,
-                                      seed=0):
+                                      seed=0,
+                                      controlVariate=False):
         traits = traits.lower()
         if traits == "pr" or traits == "pseudorandom":
             cls = MCPRForwardEuropeanHestonEngine
@@ -1658,28 +1687,12 @@ class MCForwardEuropeanHestonEngine : public PricingEngine {
                    requiredSamples,
                    requiredTolerance,
                    maxSamples,
-                   seed)
+                   seed,
+                   controlVariate)
 %}
 #endif
 
 
-%shared_ptr(QuantoEuropeanEngine)
-class QuantoEuropeanEngine : public PricingEngine {
-  public:
-    QuantoEuropeanEngine(const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
-                         const Handle<YieldTermStructure>& foreignRiskFreeRate,
-                         const Handle<BlackVolTermStructure>& exchangeRateVolatility,
-                         const Handle<Quote>& correlation);
-};
-
-%shared_ptr(QuantoForwardEuropeanEngine)
-class QuantoForwardEuropeanEngine : public PricingEngine {
-  public:
-    QuantoForwardEuropeanEngine(const ext::shared_ptr<GeneralizedBlackScholesProcess>& process,
-                                const Handle<YieldTermStructure>& foreignRiskFreeRate,
-                                const Handle<BlackVolTermStructure>& exchangeRateVolatility,
-                                const Handle<Quote>& correlation);
-};
 
 
 %{
@@ -1744,6 +1757,11 @@ class DiscreteAveragingAsianOption : public OneAssetOption {
             const std::vector<Date>& fixingDates,
             const ext::shared_ptr<StrikedTypePayoff>& payoff,
             const ext::shared_ptr<Exercise>& exercise);
+    %extend {
+        TimeGrid timeGrid() {
+            return self->result<TimeGrid>("TimeGrid");
+        }
+    }
 };
 
 // Asian engines
@@ -1751,6 +1769,10 @@ class DiscreteAveragingAsianOption : public OneAssetOption {
 
 %{
 using QuantLib::AnalyticContinuousGeometricAveragePriceAsianEngine;
+using QuantLib::AnalyticContinuousGeometricAveragePriceAsianHestonEngine;
+using QuantLib::AnalyticDiscreteGeometricAveragePriceAsianEngine;
+using QuantLib::AnalyticDiscreteGeometricAveragePriceAsianHestonEngine;
+using QuantLib::AnalyticDiscreteGeometricAverageStrikeAsianEngine;
 %}
 
 %shared_ptr(AnalyticContinuousGeometricAveragePriceAsianEngine)
@@ -1760,10 +1782,14 @@ class AnalyticContinuousGeometricAveragePriceAsianEngine : public PricingEngine 
             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process);
 };
 
-
-%{
-using QuantLib::AnalyticDiscreteGeometricAveragePriceAsianEngine;
-%}
+%shared_ptr(AnalyticContinuousGeometricAveragePriceAsianHestonEngine)
+class AnalyticContinuousGeometricAveragePriceAsianHestonEngine : public PricingEngine {
+  public:
+    AnalyticContinuousGeometricAveragePriceAsianHestonEngine(
+            const ext::shared_ptr<HestonProcess>& process,
+            Size summationCutoff = 50,
+            Real xiRightLimit = 100.0);
+};
 
 %shared_ptr(AnalyticDiscreteGeometricAveragePriceAsianEngine)
 class AnalyticDiscreteGeometricAveragePriceAsianEngine : public PricingEngine {
@@ -1772,10 +1798,13 @@ class AnalyticDiscreteGeometricAveragePriceAsianEngine : public PricingEngine {
             const ext::shared_ptr<GeneralizedBlackScholesProcess>& process);
 };
 
-
-%{
-using QuantLib::AnalyticDiscreteGeometricAverageStrikeAsianEngine;
-%}
+%shared_ptr(AnalyticDiscreteGeometricAveragePriceAsianHestonEngine)
+class AnalyticDiscreteGeometricAveragePriceAsianHestonEngine : public PricingEngine {
+  public:
+    AnalyticDiscreteGeometricAveragePriceAsianHestonEngine(
+            const ext::shared_ptr<HestonProcess>& process,
+            Real xiRightLimit = 100.0);
+};
 
 %shared_ptr(AnalyticDiscreteGeometricAverageStrikeAsianEngine)
 class AnalyticDiscreteGeometricAverageStrikeAsianEngine : public PricingEngine {
@@ -1790,6 +1819,7 @@ using QuantLib::MCDiscreteArithmeticAPEngine;
 using QuantLib::MCDiscreteArithmeticAPHestonEngine;
 using QuantLib::MCDiscreteArithmeticASEngine;
 using QuantLib::MCDiscreteGeometricAPEngine;
+using QuantLib::MCDiscreteGeometricAPHestonEngine;
 %}
 
 %shared_ptr(MCDiscreteArithmeticAPEngine<PseudoRandom>);
@@ -1869,13 +1899,19 @@ class MCDiscreteArithmeticAPHestonEngine : public PricingEngine {
                                            intOrNull requiredSamples = Null<Size>(),
                                            doubleOrNull requiredTolerance = Null<Real>(),
                                            intOrNull maxSamples = Null<Size>(),
-                                           BigInteger seed = 0) {
+                                           BigInteger seed = 0,
+                                           intOrNull timeSteps = Null<Size>(),
+                                           intOrNull timeStepsPerYear = Null<Size>(),
+                                           bool controlVariate = false) {
             return new MCDiscreteArithmeticAPHestonEngine<RNG>(process,
                                                                antitheticVariate,
                                                                requiredSamples,
                                                                requiredTolerance,
                                                                maxSamples,
-                                                               seed);
+                                                               seed,
+                                                               timeSteps,
+                                                               timeStepsPerYear,
+                                                               controlVariate);
         }
     }
 };
@@ -1891,7 +1927,10 @@ class MCDiscreteArithmeticAPHestonEngine : public PricingEngine {
                                            requiredSamples=None,
                                            requiredTolerance=None,
                                            maxSamples=None,
-                                           seed=0):
+                                           seed=0,
+                                           timeSteps=None,
+                                           timeStepsPerYear=None,
+                                           controlVariate=False):
         traits = traits.lower()
         if traits == "pr" or traits == "pseudorandom":
             cls = MCPRDiscreteArithmeticAPHestonEngine
@@ -1904,7 +1943,10 @@ class MCDiscreteArithmeticAPHestonEngine : public PricingEngine {
                    requiredSamples,
                    requiredTolerance,
                    maxSamples,
-                   seed)
+                   seed,
+                   timeSteps,
+                   timeStepsPerYear,
+                   controlVariate)
 %}
 #endif
 
@@ -2025,6 +2067,68 @@ class MCDiscreteGeometricAPEngine : public PricingEngine {
                    requiredTolerance,
                    maxSamples,
                    seed)
+%}
+#endif
+
+%shared_ptr(MCDiscreteGeometricAPHestonEngine<PseudoRandom>);
+%shared_ptr(MCDiscreteGeometricAPHestonEngine<LowDiscrepancy>);
+
+template <class RNG>
+class MCDiscreteGeometricAPHestonEngine : public PricingEngine {
+    #if !defined(SWIGJAVA) && !defined(SWIGCSHARP)
+    %feature("kwargs") MCDiscreteGeometricAPHestonEngine;
+    #endif
+  public:
+    %extend {
+        MCDiscreteGeometricAPHestonEngine(const ext::shared_ptr<HestonProcess>& process,
+                                          bool antitheticVariate = false,
+                                          intOrNull requiredSamples = Null<Size>(),
+                                          doubleOrNull requiredTolerance = Null<Real>(),
+                                          intOrNull maxSamples = Null<Size>(),
+                                          BigInteger seed = 0,
+                                          intOrNull timeSteps = Null<Size>(),
+                                          intOrNull timeStepsPerYear = Null<Size>()) {
+            return new MCDiscreteGeometricAPHestonEngine<RNG>(process,
+                                                              antitheticVariate,
+                                                              requiredSamples,
+                                                              requiredTolerance,
+                                                              maxSamples,
+                                                              seed,
+                                                              timeSteps,
+                                                              timeStepsPerYear);
+        }
+    }
+};
+
+%template(MCPRDiscreteGeometricAPHestonEngine) MCDiscreteGeometricAPHestonEngine<PseudoRandom>;
+%template(MCLDDiscreteGeometricAPHestonEngine) MCDiscreteGeometricAPHestonEngine<LowDiscrepancy>;
+
+#if defined(SWIGPYTHON)
+%pythoncode %{
+    def MCDiscreteGeometricAPHestonEngine(process,
+                                          traits,
+                                          antitheticVariate=False,
+                                          requiredSamples=None,
+                                          requiredTolerance=None,
+                                          maxSamples=None,
+                                          seed=0,
+                                          timeSteps=None,
+                                          timeStepsPerYear=None):
+        traits = traits.lower()
+        if traits == "pr" or traits == "pseudorandom":
+            cls = MCPRDiscreteGeometricAPHestonEngine
+        elif traits == "ld" or traits == "lowdiscrepancy":
+            cls = MCLDDiscreteGeometricAPHestonEngine
+        else:
+            raise RuntimeError("unknown MC traits: %s" % traits);
+        return cls(process,
+                   antitheticVariate,
+                   requiredSamples,
+                   requiredTolerance,
+                   maxSamples,
+                   seed,
+                   timeSteps,
+                   timeStepsPerYear)
 %}
 #endif
 
