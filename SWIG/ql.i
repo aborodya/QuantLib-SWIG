@@ -30,7 +30,7 @@
 %{
 #include <ql/quantlib.hpp>
 
-#if QL_HEX_VERSION < 0x01200000
+#if QL_HEX_VERSION < 0x01210000
     #error using an old version of QuantLib, please update
 #endif
 
@@ -134,7 +134,6 @@
 %include bondfunctions.i
 %include calendars.i
 %include calibrationhelpers.i
-%include callability.i
 %include capfloor.i
 %include cashflows.i
 %include convertiblebonds.i
