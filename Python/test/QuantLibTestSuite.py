@@ -44,11 +44,14 @@ from ode import OdeTest
 from americanquantooption import AmericanQuantoOptionTest
 from extrapolation import ExtrapolationTest
 from fdm import FdmTest
-from gjrgarch import GJRGARCHEngineTest, GJRGARCHCalibrationTest
 from swaption import SwaptionTest
 from volatilities import SwaptionVolatilityCubeTest
 from inflation import InflationTest
-from subperiodscoupon import SubPeriodsCouponTest
+from coupons import (
+    SubPeriodsCouponTest,
+    IborCouponTest,
+    OvernightCouponTest,
+    FixedRateCouponTest)
 
 
 def test():
@@ -81,13 +84,14 @@ def test():
     suite.addTest(unittest.makeSuite(AmericanQuantoOptionTest, 'test'))
     suite.addTest(unittest.makeSuite(ExtrapolationTest, 'test'))
     suite.addTest(unittest.makeSuite(FdmTest, 'test'))
-    suite.addTest(unittest.makeSuite(GJRGARCHEngineTest, "test"))
-    suite.addTest(unittest.makeSuite(GJRGARCHCalibrationTest, "test"))
     suite.addTest(unittest.makeSuite(SwaptionTest, "test"))
     suite.addTest(unittest.makeSuite(SwaptionVolatilityCubeTest, 'test'))
     suite.addTest(unittest.makeSuite(InflationTest, "test"))
     suite.addTest(unittest.makeSuite(CrossCurrencyBasisSwapRateHelperTest, "test"))
     suite.addTest(unittest.makeSuite(SubPeriodsCouponTest, "test"))
+    suite.addTest(unittest.makeSuite(IborCouponTest, "test"))
+    suite.addTest(unittest.makeSuite(OvernightCouponTest, "test"))
+    suite.addTest(unittest.makeSuite(FixedRateCouponTest, "test"))
 
     result = unittest.TextTestRunner(verbosity=2).run(suite)
 
