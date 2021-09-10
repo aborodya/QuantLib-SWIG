@@ -114,6 +114,10 @@
 %rename(Divide)        __div__;
 #endif
 
+%{
+// we do not want to see the deprecated warnings here
+QL_DEPRECATED_DISABLE_WARNING
+%}
 
 %include common.i
 %include vectors.i
@@ -128,6 +132,7 @@
 %include calibrationhelpers.i
 %include capfloor.i
 %include cashflows.i
+%include cliquetoptions.i
 %include convertiblebonds.i
 %include credit.i
 %include creditdefaultswap.i
