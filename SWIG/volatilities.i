@@ -175,7 +175,8 @@ class YoYOptionletVolatilitySurface : public VolatilityTermStructure {
 };
 
 %template(YoYOptionletVolatilitySurfaceHandle) Handle<YoYOptionletVolatilitySurface>;
-%template(RelinkableYoYOptionletVolatilitySurface) RelinkableHandle<YoYOptionletVolatilitySurface>;
+%template(RelinkableYoYOptionletVolatilitySurfaceHandle) RelinkableHandle<YoYOptionletVolatilitySurface>;
+deprecate_feature(RelinkableYoYOptionletVolatilitySurface, RelinkableYoYOptionletVolatilitySurfaceHandle);
 
 
 %{
@@ -586,10 +587,19 @@ class SwaptionVolatilityMatrix : public SwaptionVolatilityDiscrete {
         }
     }
     
-    std::pair<Size,Size> locate(const Date& optionDate,
-                                const Period& swapTenor) const;
-    std::pair<Size,Size> locate(Time optionTime,
-                                Time swapLength) const;
+    %extend {
+        std::pair<unsigned int, unsigned int> locate(const Date& optionDate,
+                                                     const Period& swapTenor) const {
+            auto sizes = self->locate(optionDate, swapTenor);
+            return { (unsigned int)sizes.first, (unsigned int)sizes.second };
+        }
+        std::pair<unsigned int, unsigned int> locate(Time optionTime,
+                                                     Time swapLength) const {
+            auto sizes = self->locate(optionTime, swapLength);
+            return { (unsigned int)sizes.first, (unsigned int)sizes.second };
+        }
+    }
+
     VolatilityType volatilityType() const;
 };
 
@@ -604,7 +614,14 @@ class SabrSmileSection : public SmileSection {
     SabrSmileSection(const Date& d,
                      Rate forward,
                      const std::vector<Real>& sabrParameters,
+                     const Date& referenceDate = Date(),
                      const DayCounter& dc = Actual365Fixed(),
+                     Real shift = 0.0,
+                     VolatilityType volatilityType = VolatilityType::ShiftedLognormal);
+    SabrSmileSection(const Date& d,
+                     Rate forward,
+                     const std::vector<Real>& sabrParameters,
+                     const DayCounter& dc,
                      Real shift = 0.0,
                      VolatilityType volatilityType = VolatilityType::ShiftedLognormal);
     SabrSmileSection(Time timeToExpiry,
@@ -762,6 +779,7 @@ class SwaptionVolCube2 : public SwaptionVolatilityCube {
                      bool vegaWeightedSmileFit);
 };
 
+
 %{
 using QuantLib::ConstantYoYOptionletVolatility;
 %}
@@ -780,6 +798,8 @@ class ConstantYoYOptionletVolatility : public YoYOptionletVolatilitySurface {
                                    Real minStrike = -1.0,
                                    Real maxStrike = 100.0);
 };
+
+
 %{
 using QuantLib::FlatSmileSection;
 %}

@@ -3,6 +3,7 @@
  Copyright (C) 2000, 2001, 2002, 2003 RiskMap srl
  Copyright (C) 2003, 2004, 2005 StatPro Italia srl
  Copyright (C) 2005 Johan Witters
+ Copyright (C) 2022 Ignacio Anguita
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -68,6 +69,14 @@ namespace QuantLib {
       public:
         Actual360(const bool includeLastDay = false);
     };
+    class Actual366 : public DayCounter {
+      public:
+        Actual366(const bool includeLastDay = false);
+    };
+    class Actual36525 : public DayCounter {
+      public:
+        Actual36525(const bool includeLastDay = false);
+    };
     class Actual364 : public DayCounter {};
     class Actual365Fixed : public DayCounter {
       public:
@@ -77,15 +86,13 @@ namespace QuantLib {
     class Thirty360 : public DayCounter {
       public:
         enum Convention { USA, BondBasis, European, EurobondBasis, Italian, German, ISMA, ISDA, NASD };
-        Thirty360();
         Thirty360(Convention c, const Date& terminationDate = Date());
-        Thirty360(Convention c, bool isLastPeriod);
     };
     class Thirty365 : public DayCounter {};
     class ActualActual : public DayCounter {
       public:
         enum Convention { ISMA, Bond, ISDA, Historical, Actual365, AFB, Euro };
-        ActualActual(Convention c = ISDA, const Schedule& schedule = Schedule());
+        ActualActual(Convention c, const Schedule& schedule = Schedule());
     };
     class OneDayCounter : public DayCounter {};
     class SimpleDayCounter : public DayCounter {};

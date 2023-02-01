@@ -45,7 +45,7 @@ EU_FIXING_DATA = [(ql.Date(1, ql.April, 2018), 103.11),
 
 CAL = ql.TARGET()
 
-DAY_COUNTER = ql.ActualActual()
+DAY_COUNTER = ql.ActualActual(ql.ActualActual.ISDA)
 
 BDC = ql.ModifiedFollowing
 
@@ -58,6 +58,7 @@ def create_inflation_swap_helper(
         reference_date,
         inflation_data,
         inflation_index,
+        interpolation,
         discount_curve_handle,
         observation_lag=OBSERVATION_LAG,
         calendar=CAL,
@@ -73,6 +74,7 @@ def create_inflation_swap_helper(
         business_day_convention,
         day_counter,
         inflation_index,
+        interpolation,
         discount_curve_handle)
 
 
@@ -115,12 +117,14 @@ def build_inflation_term_structure(
         reference_date,
         zero_coupon_swaps_data,
         inflation_index,
+        interpolation,
         nominal_term_structure_handle,
         observation_lag=OBSERVATION_LAG,
         include_seasonality=False):
     helpers = [create_inflation_swap_helper(reference_date,
                                             x,
                                             inflation_index,
+                                            interpolation,
                                             nominal_term_structure_handle)
                for x in zero_coupon_swaps_data]
     base_zero_rate = zero_coupon_swaps_data[0][1]
@@ -130,7 +134,6 @@ def build_inflation_term_structure(
         DAY_COUNTER,
         observation_lag,
         inflation_index.frequency(),
-        inflation_index.interpolated(),
         base_zero_rate,
         helpers)
     if include_seasonality:
@@ -144,6 +147,7 @@ def create_inflation_swap(
         start_date,
         end_date,
         rate,
+        interpolation,
         observation_lag=OBSERVATION_LAG,
         nominal=1.e6,
         payer=ql.Swap.Payer):
@@ -157,7 +161,8 @@ def create_inflation_swap(
         DAY_COUNTER,
         rate,
         inflation_idx,
-        observation_lag)
+        observation_lag,
+        interpolation)
 
 
 def interpolate_historic_index(
@@ -190,6 +195,7 @@ class InflationTest(unittest.TestCase):
             VALUATION_DATE,
             EUR_BEI_SWAP_RATES,
             inflation_idx,
+            ql.CPI.Flat,
             self.nominal_ts_handle)
         self.inflation_ts_handle.linkTo(inflation_ts)
 
@@ -197,7 +203,8 @@ class InflationTest(unittest.TestCase):
             inflation_idx,
             VALUATION_DATE,
             CAL.advance(VALUATION_DATE, ql.Period(10, ql.Years)),
-            0.0355)
+            0.0355,
+            ql.CPI.Flat)
         zciis.setPricingEngine(self.discount_engine)
         npv = zciis.NPV()
         # Check whether swap prices to par
@@ -227,6 +234,7 @@ class InflationTest(unittest.TestCase):
             VALUATION_DATE,
             EUR_BEI_SWAP_RATES,
             inflation_idx,
+            ql.CPI.Flat,
             self.nominal_ts_handle)
         self.inflation_ts_handle.linkTo(inflation_ts)
 
@@ -234,7 +242,8 @@ class InflationTest(unittest.TestCase):
             inflation_idx,
             VALUATION_DATE,
             CAL.advance(VALUATION_DATE, ql.Period(10, ql.Years)),
-            0.0355)
+            0.0355,
+            ql.CPI.Flat)
         zciis.setPricingEngine(self.discount_engine)
 
         inflation_cf = ql.as_indexed_cashflow(
@@ -289,6 +298,7 @@ class InflationTest(unittest.TestCase):
             VALUATION_DATE,
             EUR_BEI_SWAP_RATES,
             inflation_idx,
+            ql.CPI.Linear,
             self.nominal_ts_handle)
         self.inflation_ts_handle.linkTo(inflation_ts)
 
@@ -296,7 +306,8 @@ class InflationTest(unittest.TestCase):
             inflation_idx,
             ql.Date(24, ql.August, 2018),
             ql.Date(24, ql.August, 2023),
-            0.032)
+            0.032,
+            ql.CPI.Linear)
         zciis.setPricingEngine(self.discount_engine)
 
         inflation_cf = ql.as_indexed_cashflow(
@@ -336,6 +347,7 @@ class InflationTest(unittest.TestCase):
             VALUATION_DATE,
             EUR_BEI_SWAP_RATES,
             inflation_idx,
+            ql.CPI.Linear,
             self.nominal_ts_handle)
         self.inflation_ts_handle.linkTo(inflation_ts)
 
@@ -359,6 +371,41 @@ class InflationTest(unittest.TestCase):
         self.assertAlmostEquals(
             first=curve_base_fixing,
             second=expected_curve_base_fixing,
+            msg=fail_msg,
+            delta=EPSILON)
+
+    def test_lagged_fixing_method(self):
+        """Testing lagged fixing method"""
+
+        inflation_idx = build_hicp_index(
+            EU_FIXING_DATA, self.inflation_ts_handle)
+        inflation_ts = build_inflation_term_structure(
+            VALUATION_DATE,
+            EUR_BEI_SWAP_RATES,
+            inflation_idx,
+            ql.CPI.Flat,
+            self.nominal_ts_handle)
+        self.inflation_ts_handle.linkTo(inflation_ts)
+
+        maturity_date = ql.Date(25, ql.October, 2027)
+        lag = ql.Period(3, ql.Months)
+        indexation = ql.CPI.Flat
+
+        actual_fixing = ql.CPI.laggedFixing(inflation_idx, maturity_date, lag, indexation)
+        expected_fixing = inflation_idx.fixing(ql.Date(1, ql.July, 2027))
+
+        fail_msg = """ Failed to replicate lagged fixing:
+                            index: {inflation_idx}
+                            actual fixing: {actual_fixing}
+                            expected fixing: {expected_fixing}
+                            tolerance: {tolerance}
+                   """.format(inflation_idx=inflation_idx.familyName(),
+                              actual_fixing=actual_fixing,
+                              expected_fixing=expected_fixing,
+                              tolerance=EPSILON)
+        self.assertAlmostEquals(
+            first=actual_fixing,
+            second=expected_fixing,
             msg=fail_msg,
             delta=EPSILON)
 

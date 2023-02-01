@@ -1,31 +1,52 @@
 
-Main changes for QuantLib-SWIG 1.26
+Main changes for QuantLib-SWIG 1.29
 ===================================
 
 More details on the changes are available in ChangeLog.txt and at
-<https://github.com/lballabio/QuantLib-SWIG/milestone/19?closed=1>.
+<https://github.com/lballabio/QuantLib-SWIG/milestone/22?closed=1>.
 
-- Running `make` in the `CSharp` folder (after `../configure` in the
-  root folder) now uses `dotnet` instead of older C# compilers.
-  The existing VC# projects were also updated to .Net.
+- Enabled autodoc feature in Python; exported methods and classes have
+  now docstrings reporting their interface and the types of the parameters.
 
-- Fixed a compilation error in wrappers when using strict C++17 mode
-  (thanks to Jonghee Lee).
+- Enabled CI build and tests for the R wrappers; thanks to @AndLLA.
 
-- Exported a few more constructors for `FraRateHelper` (thanks to Marcin Rybacki).
+- **Removed** deprecated features no longer available in the
+  underlying C++ library:
+  - the constructor of `UnitedStates` missing an explicit market;
+  - the `nominalTermStructure` method of `InflationTermStructure`;
+  - the `CrossCurrencyBasisSwapRateHelper` class.
 
-- Exported the `SpreadFittingMethod` class.
+- Added `compounding` and `compoundingFrequency` parameters to
+  `FixedRateLeg` (@lballabio).
 
-- Exported the new `BondForward` class (thanks to Marcin Rybacki).
+- Exported `CashFlows::npvbps` method (@lballabio).
 
-- Ensure that periods that compare equal have the same hash in C# and Python.
+- Exported `baseFixing` and `indexFixing` methods in `IndexedCashFlow`
+  (@lballabio).
 
-- Exported `SplineLogCubic` interpolation and the corresponding
-  `NaturalLogCubicDiscountCurve`, `PiecewiseNaturalCubicZero` and
-  `PiecewiseNaturalLogCubicDiscount` classes. Also exported
-  `KrugerLogDiscountCurve` and `KrugerZeroCurve` based on Kruger
-  interpolation (thanks to Marcin Rybacki).
+- Exported new constructors for zero-inflation indexes (@lballabio).
 
-- Exported `as_overnight_indexed_coupon` function to downcast such
-  coupons when needed (thanks to Marcin Rybacki).
+- Exported missing arguments in `CreditDefaultSwap` constructor (@lballabio).
+
+- Exported `Nearest` business-day convention (@lballabio).
+
+- Exported `AmortizingCmsRateBond`; thanks to @chenyanlann.
+
+- Exported `QuantoBarrierOption` and `QuantoBarrierEngine`; thanks to
+  @chenyanlann.
+
+- Avoided out-of-bound access to `Matrix` elements (@lballabio).
+
+- Exported a number of LMM-related classes (@lballabio).
+
+- Exported YoY inflation coupons and related classes (@lballabio).
+
+- Exported the `CPI::laggedFixing` method; thanks to Marcin Rybacki
+  (@marcin-rybacki).
+
+- Exported `QdPlusAmericanEngine`, `QdFpAmericanEngine` and related
+  classes; thanks to Klaus Spanderen (@klausspanderen).
+
+- Added Python test case for Andreasen-Huge local volatility; thanks
+  to Klaus Spanderen (@klausspanderen).
 

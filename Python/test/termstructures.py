@@ -52,6 +52,7 @@ class TermStructureTest(unittest.TestCase):
     def setUp(self):
         self.calendar = ql.TARGET()
         today = self.calendar.adjust(ql.Date.todaysDate())
+        ql.Settings.instance().evaluationDate = today
         self.settlementDays = 2
         self.dayCounter = ql.Actual360()
         settlement = self.calendar.advance(today, self.settlementDays, ql.Days)
@@ -80,7 +81,7 @@ class TermStructureTest(unittest.TestCase):
                 self.calendar,
                 ql.Annual,
                 ql.Unadjusted,
-                ql.Thirty360(),
+                ql.Thirty360(ql.Thirty360.BondBasis),
                 ql.Euribor6M(),
             )
             for (years, rate) in [(1, 4.54), (5, 4.99), (10, 5.47), (20, 5.89), (30, 5.96)]
@@ -88,6 +89,9 @@ class TermStructureTest(unittest.TestCase):
 
         self.termStructure = ql.PiecewiseFlatForward(
             settlement, deposits + swaps, self.dayCounter)
+
+    def tearDown(self):
+        ql.Settings.instance().evaluationDate = ql.Date()
 
     def testImpliedObs(self):
         "Testing observability of implied term structure"
@@ -203,6 +207,116 @@ class TermStructureTest(unittest.TestCase):
                 delta=1.0e-12,
                 msg=failMsg)
 
+    def testQuantoTermStructure(self):
+        """Testing quanto term structure"""
+        today = ql.Date.todaysDate()
+
+        dividend_ts = ql.YieldTermStructureHandle(
+            ql.FlatForward(
+                today,
+                ql.QuoteHandle(ql.SimpleQuote(0.055)),
+                self.dayCounter
+            )
+        )
+        r_domestic_ts = ql.YieldTermStructureHandle(
+            ql.FlatForward(
+                today,
+                ql.QuoteHandle(ql.SimpleQuote(-0.01)),
+                self.dayCounter
+            )
+        )
+        r_foreign_ts = ql.YieldTermStructureHandle(
+            ql.FlatForward(
+                today,
+                ql.QuoteHandle(ql.SimpleQuote(0.02)),
+                self.dayCounter
+            )
+        )
+        sigma_s = ql.BlackVolTermStructureHandle(
+            ql.BlackConstantVol(
+                today,
+                self.calendar,
+                ql.QuoteHandle(ql.SimpleQuote(0.25)),
+                self.dayCounter
+            )
+        )
+        sigma_fx = ql.BlackVolTermStructureHandle(
+            ql.BlackConstantVol(
+                today,
+                self.calendar,
+                ql.QuoteHandle(ql.SimpleQuote(0.05)),
+                self.dayCounter
+            )
+        )
+        rho = ql.QuoteHandle(ql.SimpleQuote(0.3))
+        s_0 = ql.QuoteHandle(ql.SimpleQuote(100.0))
+
+        exercise = ql.EuropeanExercise(self.calendar.advance(today, 6, ql.Months))
+        payoff = ql.PlainVanillaPayoff(ql.Option.Call, 95.0)
+
+        vanilla_option = ql.VanillaOption(payoff, exercise)
+        quanto_ts = ql.YieldTermStructureHandle(
+            ql.QuantoTermStructure(
+                dividend_ts,
+                r_domestic_ts,
+                r_foreign_ts,
+                sigma_s,
+                ql.nullDouble(),
+                sigma_fx,
+                ql.nullDouble(),
+                rho.value()
+            )
+        )
+        gbm_quanto = ql.BlackScholesMertonProcess(s_0, quanto_ts, r_domestic_ts, sigma_s)
+        vanilla_engine = ql.AnalyticEuropeanEngine(gbm_quanto)
+        vanilla_option.setPricingEngine(vanilla_engine)
+
+        quanto_option = ql.QuantoVanillaOption(payoff, exercise)
+        gbm_vanilla = ql.BlackScholesMertonProcess(s_0, dividend_ts, r_domestic_ts, sigma_s)
+        quanto_engine = ql.QuantoEuropeanEngine(gbm_vanilla, r_foreign_ts, sigma_fx, rho)
+        quanto_option.setPricingEngine(quanto_engine)
+
+        quanto_option_pv = quanto_option.NPV()
+        vanilla_option_pv = vanilla_option.NPV()
+
+        message = """Failed to reproduce QuantoOption / EuropeanQuantoEngine NPV:
+                      {quanto_pv}
+                      by using the QuantoTermStructure as the dividend together with
+                      VanillaOption / AnalyticEuropeanEngine:
+                      {vanilla_pv}
+                  """.format(
+            quanto_pv=quanto_option_pv,
+            vanilla_pv=vanilla_option_pv
+        )
+
+        self.assertAlmostEquals(
+            quanto_option_pv,
+            vanilla_option_pv,
+            delta=1e-12,
+            msg=message
+        )
+
+    def testLazyObject(self):
+        evaluationDate = ql.Settings.instance().evaluationDate
+        nodes = self.termStructure.nodes()
+        self.termStructure.freeze()
+
+        ql.Settings.instance().evaluationDate = self.calendar.advance(evaluationDate, 100, ql.Days)
+
+        # Check that dates and rates are unchanged
+        for i in range(len(self.termStructure.nodes())):
+            self.assertEqual(nodes[i][0], self.termStructure.nodes()[i][0])
+            self.assertEqual(nodes[i][1], self.termStructure.nodes()[i][1])
+
+        self.termStructure.recalculate()
+
+        # Check that dates have changed (except the reference, which is fixed)
+        for i in range(1, len(self.termStructure.nodes())):
+            self.assertNotEqual(nodes[i][0], self.termStructure.nodes()[i][0])
+
+        ql.Settings.instance().evaluationDate = evaluationDate
+
+        self.termStructure.unfreeze()
 
 if __name__ == "__main__":
     print("testing QuantLib " + ql.__version__)

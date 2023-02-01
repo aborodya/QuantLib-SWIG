@@ -43,7 +43,7 @@ object CPIBond {
         val startTime = System.currentTimeMillis
 
         val calendar = new UnitedKingdom()
-        val dayCounter = new ActualActual();
+        val dayCounter = new ActualActual(ActualActual.Convention.ISDA);
         val convention = BusinessDayConvention.ModifiedFollowing
         
         val today = new Date(25, November, 2009)
@@ -102,8 +102,7 @@ object CPIBond {
 
         cpiTS linkTo new PiecewiseZeroInflation(          
           evaluationDate, calendar, dayCounter, observationLag, 
-          inflationIndex.frequency, inflationIndex.interpolated, 
-          zciisData(0).rate/100d, zeroSwapHelpers)
+          inflationIndex.frequency, zciisData(0).rate/100d, zeroSwapHelpers)
           
         val notional = 1000000d;
         

@@ -1,4 +1,4 @@
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 """
  Copyright (C) 2000, 2001, 2002, 2003 RiskMap srl
  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 StatPro Italia srl
@@ -30,7 +30,7 @@ from distutils.ccompiler import get_default_compiler
 
 class test(Command):
     # Original version of this class posted
-    # by Berthold Höllmann to distutils-sig@python.org
+    # by Berthold HÃ¶llmann to distutils-sig@python.org
     description = "test the distribution prior to install"
 
     user_options = [
@@ -145,12 +145,12 @@ class my_build_ext(build_ext):
             extra_link_args = ['/subsystem:windows', machinetype]
 
             if self.debug:
-                if self.static:
+                if self.static or 'QL_STATIC_RUNTIME' in os.environ:
                     extra_compile_args.append('/MTd')
                 else:
                     extra_compile_args.append('/MDd')
             else:
-                if self.static:
+                if self.static or 'QL_STATIC_RUNTIME' in os.environ:
                     extra_compile_args.append('/MT')
                 else:
                     extra_compile_args.append('/MD')
@@ -212,7 +212,7 @@ classifiers = [
 ]
 
 setup(name             = "QuantLib",
-      version          = "1.27-dev",
+      version          = "1.30-dev",
       description      = "Python bindings for the QuantLib library",
       long_description = """
 QuantLib (https://www.quantlib.org/) is a C++ library for financial quantitative

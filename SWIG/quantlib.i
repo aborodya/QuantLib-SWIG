@@ -64,11 +64,19 @@ const char* __version__;
 #endif
 
 
+%include stl.i
+
 #if defined(JAVA_AUTOCLOSEABLE)
 %typemap(javaimports) SWIGTYPE %{
 import java.lang.AutoCloseable;
 %}
 %typemap(javainterfaces) SWIGTYPE "AutoCloseable";
+%extend std::vector {
+    %typemap(javainterfaces) std::vector "AutoCloseable, java.util.RandomAccess";
+};
+%extend std::vector<bool> {
+    %typemap(javainterfaces) std::vector "AutoCloseable, java.util.RandomAccess"
+}
 %typemap(javacode) SWIGTYPE %{
   @Override
   public void close() {
@@ -77,13 +85,12 @@ import java.lang.AutoCloseable;
 %}
 #endif
 
-
 #if !defined(JAVA_FINALIZER)
 %typemap(javafinalize) SWIGTYPE %{%}
 #endif
 
-//#if defined(SWIGPYTHON)
-//%feature("autodoc");
-//#endif
+#if defined(SWIGPYTHON)
+%feature("autodoc");
+#endif
 
 %include ql.i
