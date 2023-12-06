@@ -1,6 +1,0 @@
-#!/bin/bash
-set -e
-
-pip install Python/dist/QuantLib-*.whl
-grep -v QuantLib binder/requirements.txt > Python/examples/requirements.txt
-pip install -r Python/examples/requirements.txt

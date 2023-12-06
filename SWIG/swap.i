@@ -43,6 +43,8 @@ using QuantLib::OvernightIndexedSwap;
 using QuantLib::MakeOIS;
 using QuantLib::ZeroCouponSwap;
 using QuantLib::EquityTotalReturnSwap;
+using QuantLib::ArithmeticAverageOIS;
+using QuantLib::simplifyNotificationGraph;
 %}
 
 %shared_ptr(Swap)
@@ -54,12 +56,20 @@ class Swap : public Instrument {
          const std::vector<ext::shared_ptr<CashFlow> >& secondLeg);
     Swap(const std::vector<Leg>& legs,
          const std::vector<bool>& payer);
+    Size numberOfLegs() const;
     Date startDate() const;
     Date maturityDate() const;
     const Leg & leg(Size i);
     Real legNPV(Size j) const;
     Real legBPS(Size k) const;
+    DiscountFactor startDiscounts(Size j) const;
+    DiscountFactor endDiscounts(Size j) const;
+    DiscountFactor npvDateDiscount() const;
+    bool payer(Size j) const;
 };
+
+void simplifyNotificationGraph(Swap& swap, bool unregisterCoupons = false);
+
 
 %shared_ptr(VanillaSwap)
 class VanillaSwap : public Swap {
@@ -351,7 +361,7 @@ class OvernightIndexedSwap : public Swap {
             const DayCounter& fixedDC,
             const ext::shared_ptr<OvernightIndex>& index,
             Spread spread = 0.0,
-            Natural paymentLag = 0,
+            Integer paymentLag = 0,
             BusinessDayConvention paymentAdjustment = Following,
             Calendar paymentCalendar = Calendar(),
             bool telescopicValueDates = false,
@@ -365,11 +375,26 @@ class OvernightIndexedSwap : public Swap {
             const DayCounter& fixedDC,
             const ext::shared_ptr<OvernightIndex>& index,
             Spread spread = 0.0,
-            Natural paymentLag = 0,
+            Integer paymentLag = 0,
             BusinessDayConvention paymentAdjustment = Following,
             Calendar paymentCalendar = Calendar(),
             bool telescopicValueDates = false,
             RateAveraging::Type averagingMethod = RateAveraging::Compound);
+
+    OvernightIndexedSwap(Type type,
+                         const std::vector<Real>& fixedNominals,
+                         const Schedule& fixedSchedule,
+                         Rate fixedRate,
+                         const DayCounter& fixedDC,
+                         const std::vector<Real>& overnightNominals,
+                         const Schedule& overnightSchedule,
+                         const ext::shared_ptr<OvernightIndex>& overnightIndex,
+                         Spread spread = 0.0,
+                         Integer paymentLag = 0,
+                         BusinessDayConvention paymentAdjustment = Following,
+                         const Calendar& paymentCalendar = Calendar(),
+                         bool telescopicValueDates = false,
+                         RateAveraging::Type averagingMethod = RateAveraging::Compound);
 
     Rate fixedLegBPS();
     Real fixedLegNPV();
@@ -384,6 +409,7 @@ class OvernightIndexedSwap : public Swap {
     Frequency paymentFrequency();
     Rate fixedRate();
     const DayCounter& fixedDayCount();
+    ext::shared_ptr<OvernightIndex> overnightIndex() const;
     Spread spread();
     const Leg& fixedLeg();
     const Leg& overnightLeg();
@@ -415,7 +441,7 @@ class MakeOIS {
         MakeOIS& withRule(DateGeneration::Rule r);
         MakeOIS& withPaymentFrequency(Frequency f);
         MakeOIS& withPaymentAdjustment(BusinessDayConvention convention);
-        MakeOIS& withPaymentLag(Natural lag);
+        MakeOIS& withPaymentLag(Integer lag);
         MakeOIS& withPaymentCalendar(const Calendar& cal);
         MakeOIS& withEndOfMonth(bool flag = true);
         MakeOIS& withFixedLegDayCount(const DayCounter& dc);
@@ -611,5 +637,56 @@ class EquityTotalReturnSwap : public Swap {
     Real equityLegNPV() const;
     Real interestRateLegNPV() const;
     Real fairMargin() const;
+};
+
+%shared_ptr(ArithmeticAverageOIS)
+class ArithmeticAverageOIS : public Swap {
+  public:
+    ArithmeticAverageOIS(Type type,
+                         Real nominal,
+                         const Schedule& fixedLegSchedule,
+                         Rate fixedRate,
+                         DayCounter fixedDC,
+                         ext::shared_ptr<OvernightIndex> overnightIndex,
+                         const Schedule& overnightLegSchedule,
+                         Spread spread = 0.0,
+                         Real meanReversionSpeed = 0.03,
+                         Real volatility = 0.00, // NO convexity adjustment by default
+                         bool byApprox = false); // TRUE to use Katsumi Takada approximation
+    ArithmeticAverageOIS(Type type,
+                         std::vector<Real> nominals,
+                         const Schedule& fixedLegSchedule,
+                         Rate fixedRate,
+                         DayCounter fixedDC,
+                         ext::shared_ptr<OvernightIndex> overnightIndex,
+                         const Schedule& overnightLegSchedule,
+                         Spread spread = 0.0,
+                         Real meanReversionSpeed = 0.03,
+                         Real volatility = 0.00, // NO convexity adjustment by default
+                         bool byApprox = false); // TRUE to use Katsumi Takada approximation
+
+    Type type() const;
+    Real nominal() const;
+    std::vector<Real> nominals() const;
+
+    Frequency fixedLegPaymentFrequency();
+    Frequency overnightLegPaymentFrequency();
+
+    Rate fixedRate() const;
+    const DayCounter& fixedDayCount();
+
+    ext::shared_ptr<OvernightIndex> overnightIndex();
+    Spread spread() const;
+
+    const Leg& fixedLeg() const;
+    const Leg& overnightLeg() const;
+
+    Real fixedLegBPS() const;
+    Real fixedLegNPV() const;
+    Real fairRate() const;
+
+    Real overnightLegBPS() const;
+    Real overnightLegNPV() const;
+    Spread fairSpread() const;
 };
 #endif

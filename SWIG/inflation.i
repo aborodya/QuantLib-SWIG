@@ -187,6 +187,24 @@ class ZeroInflationIndex : public InflationIndex {
 %shared_ptr(YoYInflationIndex)
 class YoYInflationIndex : public InflationIndex {
   public:
+    // Constructor for year-on-year indices defined as a ratio.
+    YoYInflationIndex(
+            const ext::shared_ptr<ZeroInflationIndex>& underlyingIndex,
+            bool interpolated,
+            Handle<YoYInflationTermStructure> ts = {});
+
+    // Constructor for quoted year-on-year indices.
+    YoYInflationIndex(
+            const std::string& familyName,
+            const Region& region,
+            bool revised,
+            bool interpolated,
+            Frequency frequency,
+            const Period& availabilityLag,
+            const Currency& currency,
+            Handle<YoYInflationTermStructure> ts = {});
+
+    // Deprecated constructor.
     YoYInflationIndex(const std::string& familyName,
                       const Region& region,
                       bool revised,
@@ -197,6 +215,7 @@ class YoYInflationIndex : public InflationIndex {
                       const Currency& currency,
                       const Handle<YoYInflationTermStructure>& ts = {});
     bool ratio() const;
+    ext::shared_ptr<ZeroInflationIndex> underlyingIndex() const;
     Handle<YoYInflationTermStructure> yoyInflationTermStructure() const;
     ext::shared_ptr<YoYInflationIndex> clone(const Handle<YoYInflationTermStructure>& h) const;
 };
@@ -335,7 +354,6 @@ class CPICoupon : public InflationCoupon {
               CPI::InterpolationType observationInterpolation,
               const DayCounter& dayCounter,
               Real fixedRate,
-              Spread spread = 0.0,
               const Date& refPeriodStart = Date(),
               const Date& refPeriodEnd = Date(),
               const Date& exCouponDate = Date());
@@ -349,7 +367,6 @@ class CPICoupon : public InflationCoupon {
               CPI::InterpolationType observationInterpolation,
               const DayCounter& dayCounter,
               Real fixedRate,
-              Spread spread = 0.0,
               const Date& refPeriodStart = Date(),
               const Date& refPeriodEnd = Date(),
               const Date& exCouponDate = Date());
@@ -364,7 +381,49 @@ class CPICoupon : public InflationCoupon {
               CPI::InterpolationType observationInterpolation,
               const DayCounter& dayCounter,
               Real fixedRate,
-              Spread spread = 0.0,
+              const Date& refPeriodStart = Date(),
+              const Date& refPeriodEnd = Date(),
+              const Date& exCouponDate = Date());
+    CPICoupon(Real baseCPI,
+              const Date& paymentDate,
+              Real nominal,
+              const Date& startDate,
+              const Date& endDate,
+              const ext::shared_ptr<ZeroInflationIndex>& index,
+              const Period& observationLag,
+              CPI::InterpolationType observationInterpolation,
+              const DayCounter& dayCounter,
+              Real fixedRate,
+              Spread spread,
+              const Date& refPeriodStart = Date(),
+              const Date& refPeriodEnd = Date(),
+              const Date& exCouponDate = Date());
+    CPICoupon(const Date& baseDate,
+              const Date& paymentDate,
+              Real nominal,
+              const Date& startDate,
+              const Date& endDate,
+              const ext::shared_ptr<ZeroInflationIndex>& index,
+              const Period& observationLag,
+              CPI::InterpolationType observationInterpolation,
+              const DayCounter& dayCounter,
+              Real fixedRate,
+              Spread spread,
+              const Date& refPeriodStart = Date(),
+              const Date& refPeriodEnd = Date(),
+              const Date& exCouponDate = Date());
+    CPICoupon(Real baseCPI,
+              const Date& baseDate,
+              const Date& paymentDate,
+              Real nominal,
+              const Date& startDate,
+              const Date& endDate,
+              const ext::shared_ptr<ZeroInflationIndex>& index,
+              const Period& observationLag,
+              CPI::InterpolationType observationInterpolation,
+              const DayCounter& dayCounter,
+              Real fixedRate,
+              Spread spread,
               const Date& refPeriodStart = Date(),
               const Date& refPeriodEnd = Date(),
               const Date& exCouponDate = Date());
@@ -372,6 +431,7 @@ class CPICoupon : public InflationCoupon {
     Spread spread() const;
     Rate adjustedIndexGrowth() const;
     Rate indexFixing() const;
+    Real indexRatio(Date d) const;
     Rate baseCPI() const;
     Date baseDate() const;
     CPI::InterpolationType observationInterpolation() const;

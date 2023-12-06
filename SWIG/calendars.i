@@ -90,6 +90,8 @@ class Calendar {
     bool isEndOfMonth(const Date&);
     void addHoliday(const Date&);
     void removeHoliday(const Date&);
+    void resetAddedAndRemovedHolidays();
+
     Date adjust(const Date& d,
                 BusinessDayConvention convention = QuantLib::Following);
     Date advance(const Date& d, Integer n, TimeUnit unit,
@@ -128,6 +130,10 @@ class Calendar {
     %}
     #endif
 };
+
+namespace std {
+    %template(CalendarVector) vector<Calendar>;
+}
 
 namespace QuantLib {
 
@@ -312,7 +318,7 @@ namespace QuantLib {
     class UnitedStates : public Calendar {
       public:
         enum Market { Settlement, NYSE, GovernmentBond,
-                      NERC, LiborImpact, FederalReserve };
+                      NERC, LiborImpact, FederalReserve, SOFR };
         UnitedStates(Market m);
     };
 
@@ -331,6 +337,8 @@ namespace QuantLib {
         JointCalendar(const Calendar&, const Calendar&,
                       const Calendar&, const Calendar&,
                       JointCalendarRule rule = QuantLib::JoinHolidays);
+        explicit JointCalendar(const std::vector<Calendar>&,
+                               JointCalendarRule = QuantLib::JoinHolidays);
     };
 
     class BespokeCalendar : public Calendar {
