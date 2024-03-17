@@ -47,8 +47,8 @@ bool ArrayFromSequence(PyObject* source, Array* target) {
             if (PyFloat_Check(o)) {
                 (*target)[i] = PyFloat_AsDouble(o);
                 Py_DECREF(o);
-            } else if (PyInt_Check(o)) {
-                (*target)[i] = Real(PyInt_AsLong(o));
+            } else if (PyLong_Check(o)) {
+                (*target)[i] = PyLong_AsDouble(o);
                 Py_DECREF(o);
             } else {
                 Py_DECREF(o);
@@ -176,8 +176,8 @@ bool ArrayFromSequence(PyObject* source, Array* target) {
                     if (PyFloat_Check(d)) {
                         $1[i][j] = PyFloat_AsDouble(d);
                         Py_DECREF(d);
-                    } else if (PyInt_Check(d)) {
-                        $1[i][j] = Real(PyInt_AsLong(d));
+                    } else if (PyLong_Check(d)) {
+                        $1[i][j] = PyLong_AsDouble(d);
                         Py_DECREF(d);
                     } else {
                         PyErr_SetString(PyExc_TypeError,"doubles expected");
@@ -247,8 +247,8 @@ bool ArrayFromSequence(PyObject* source, Array* target) {
                     if (PyFloat_Check(d)) {
                         temp[i][j] = PyFloat_AsDouble(d);
                         Py_DECREF(d);
-                    } else if (PyInt_Check(d)) {
-                        temp[i][j] = Real(PyInt_AsLong(d));
+                    } else if (PyLong_Check(d)) {
+                        temp[i][j] = PyLong_AsDouble(d);
                         Py_DECREF(d);
                     } else {
                         PyErr_SetString(PyExc_TypeError,"doubles expected");
@@ -407,9 +407,6 @@ class Array {
             QL_ENSURE(static_cast<Integer>(rhs.size()) == j-i,
                       "arrays are not resizable");
             std::copy(rhs.begin(),rhs.end(),self->begin()+i);
-        }
-        bool __nonzero__() {
-            return (self->size() != 0);
         }
         bool __bool__() {
             return (self->size() != 0);
