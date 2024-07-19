@@ -23,7 +23,6 @@ from setuptools import Command
 from setuptools.command.build_ext import build_ext
 from setuptools.command.build import build
 from setuptools._distutils.ccompiler import get_default_compiler
-from wheel.bdist_wheel import bdist_wheel
 
 py_limited_api = (platform.python_implementation() == 'CPython')
 
@@ -196,16 +195,6 @@ class my_build_ext(build_ext):
             ext.extra_link_args += extra_link_args
 
 
-class my_bdist_wheel(bdist_wheel):
-    def get_tag(self):
-        python, abi, plat = super().get_tag()
-
-        if python.startswith("cp"):
-            return "cp38", "abi3", plat
-
-        return python, abi, plat
-
-
 classifiers = [
     'Development Status :: 5 - Production/Stable',
     'Environment :: Console',
@@ -224,7 +213,7 @@ classifiers = [
 ]
 
 setup(name             = "QuantLib",
-      version          = "1.35-dev",
+      version          = "1.35-rc",
       description      = "Python bindings for the QuantLib library",
       long_description = """
 QuantLib (https://www.quantlib.org/) is a free/open-source C++ library
@@ -247,7 +236,6 @@ a comprehensive software framework for quantitative finance.
                           'wrap': my_wrap,
                           'build': my_build,
                           'build_ext': my_build_ext,
-                          'bdist_wheel': my_bdist_wheel,
                           }
       )
 
